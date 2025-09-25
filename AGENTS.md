@@ -54,7 +54,7 @@ Refreshing stack images:
 ## Common Workflows
 
 ### 1) Format, Lint, Build
-Run at repo root or inside a specific package directory.
+Run `format`/`build` from repo root or package root; `elastic-package lint` currently requires package context, so either `cd packages/<package>` or use `elastic-package lint -C packages/<package>`.
 
 ```sh
 # ensure stack is up first if you plan to test after
@@ -190,6 +190,32 @@ Handy flags:
 ## Pull Request Reviews via `gh` (GitHub CLI)
 
 Use this to extract reviewer tasks and maintain a single, readable log per PR. Write logs under `docs-logs/` for traceability, with correct heading hierarchy.
+
+### Quickly list unresolved review comments
+
+```sh
+# Dump review threads (requires GH auth with repo scope)
+gh api graphql -f \
+  query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved isOutdated path comments(last:20) { nodes { url body author { login } createdAt } } } } } } }' \
+  -f owner=elastic -f repo=integrations -F number=14161 > /tmp/threads.json
+
+# Show unresolved threads with actionable last comment
+jq -r '.data.repository.pullRequest.reviewThreads.nodes
+  | map(select(.isResolved == false))
+  | .[]
+  | (.comments.nodes | last) as $last
+  | "URL: " + $last.url + "\nPATH: " + .path + "\nBODY:\n" + $last.body + "\n---"' /tmp/threads.json
+
+# Save a machine-friendly summary for docs-log generation
+jq '.data.repository.pullRequest.reviewThreads.nodes
+  | map(select(.isResolved == false))
+  | map({path, isOutdated, last: (.comments.nodes | last)})' /tmp/threads.json > /tmp/unresolved.json
+```
+
+Tips:
+- Increase `reviewThreads(first:...)` or paginate with `after` if the PR is large.
+- Swap `-F number=` for other PR IDs.
+- Reuse `/tmp/unresolved.json` in helper scripts to update `docs-logs/<date> pr-<id>-open-items.md`.
 
 1) Fetch review comments for a PR URL
 
