@@ -728,31 +728,69 @@ processors:
       if: ctx.qualys_gav?.asset?.netbios_name != null
   - foreach:
       field: qualys_gav.asset.network_interface_list_data.network_interface
-      tag: foreach_asset_network_interface_list_data_network_interface_to_convert_address_ip_v4
+      tag: foreach_network_interface_list_data_network_interface_to_split_address_ip_v4
       if: ctx.qualys_gav?.asset?.network_interface_list_data?.network_interface instanceof List
       processor:
-        convert:
+        split:
           field: _ingest._value.address_ip_v4
-          tag: convert_asset_network_interface_list_data_network_interface_address_ip_v4
-          type: ip
+          separator: ','
+          tag: split_asset_network_interface_list_data_network_interface_address_ip_v4
           ignore_missing: true
           on_failure:
-            - remove:
-                field: _ingest._value.address_ip_v4
-                ignore_missing: true
             - append:
                 field: error.message
                 value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
   - foreach:
       field: qualys_gav.asset.network_interface_list_data.network_interface
+      tag: foreach_network_interface_list_data_network_interface_to_trim_address_ip_v4
+      if: ctx.qualys_gav?.asset?.network_interface_list_data?.network_interface instanceof List
+      processor:
+        foreach:
+          field: _ingest._value.address_ip_v4
+          tag: foreach_asset_network_interface_list_data_network_interface_address_ip_v4_trim
+          ignore_failure: true
+          processor:
+            trim:
+              field: _ingest._value
+              tag: trim_asset_network_interface_list_data_network_interface_address_ip_v4
+              ignore_missing: true
+  - foreach:
+      field: qualys_gav.asset.network_interface_list_data.network_interface
+      tag: foreach_asset_network_interface_list_data_network_interface_to_convert_address_ip_v4
+      if: ctx.qualys_gav?.asset?.network_interface_list_data?.network_interface instanceof List
+      processor:
+        foreach:
+          field: _ingest._value.address_ip_v4
+          tag: foreach_asset_network_interface_list_data_network_interface_address_ip_v4
+          ignore_failure: true
+          processor:
+            convert:
+              field: _ingest._value
+              tag: convert_asset_network_interface_list_data_network_interface_address_ip_v4
+              type: ip
+              ignore_missing: true
+              on_failure:
+                - remove:
+                    field: _ingest._value
+                    ignore_missing: true
+                - append:
+                    field: error.message
+                    value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
+  - foreach:
+      field: qualys_gav.asset.network_interface_list_data.network_interface
       tag: foreach_network_interface_list_data_network_interface_to_set_related_ip_from_address_ip_v4
       if: ctx.qualys_gav?.asset?.network_interface_list_data?.network_interface instanceof List
       processor:
-        append:
-          field: related.ip
-          tag: append_network_interface_list_data_network_interface_address_ip_v4_into_related_ip
-          value: '{{{_ingest._value.address_ip_v4}}}'
-          allow_duplicates: false
+        foreach:
+          field: _ingest._value.address_ip_v4
+          tag: foreach_asset_network_interface_list_data_network_interface_address_ip_v4
+          ignore_failure: true
+          processor:
+            append:
+              field: related.ip
+              tag: append_network_interface_list_data_network_interface_address_ip_v4_into_related_ip
+              value: '{{{_ingest._value}}}'
+              allow_duplicates: false
   - foreach:
       field: qualys_gav.asset.network_interface_list_data.network_interface
       tag: foreach_network_interface_list_data_network_interface_to_gsub_mac_address
@@ -1051,11 +1089,67 @@ processors:
       tag: set_host_os_version_from_asset_operating_system_version
       copy_from: qualys_gav.asset.operating_system.version
       ignore_empty_value: true
-  - set:
-      field: cloud.provider
-      tag: set_cloud_provider_from_asset_provider
-      copy_from: qualys_gav.asset.cloud_provider
-      ignore_empty_value: true
+  - lowercase:
+      field: qualys_gav.asset.provider
+      target_field: cloud.provider
+      tag: lowercase_cloud_provider_from_asset_provider
+      ignore_missing: true
+  - convert:
+      field: qualys_gav.asset.cloud_provider.aws.ec2.has_agent
+      tag: convert_qualys_gav_asset_cloud_provider_aws_ec2_has_agent_to_boolean
+      type: boolean
+      ignore_missing: true
+      on_failure:
+        - remove:
+            field: qualys_gav.asset.cloud_provider.aws.ec2.has_agent
+            ignore_missing: true
+        - append:
+            field: error.message
+            value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
+  - date:
+      field: qualys_gav.asset.cloud_provider.aws.ec2.launchdate
+      tag: date_qualys_gav_asset_cloud_provider_aws_ec2_launchdate
+      target_field: qualys_gav.asset.cloud_provider.aws.ec2.launchdate
+      formats:
+        - UNIX_MS
+        - ISO8601
+      if: ctx.qualys_gav?.asset?.cloud_provider?.aws?.ec2?.launchdate != null && ctx.qualys_gav.asset.cloud_provider.aws.ec2.launchdate != ''
+      on_failure:
+        - remove:
+            field: qualys_gav.asset.cloud_provider.aws.ec2.launchdate
+            ignore_missing: true
+        - append:
+            field: error.message
+            value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
+  - convert:
+      field: qualys_gav.asset.cloud_provider.aws.ec2.qualys_scanner
+      tag: convert_qualys_gav_asset_cloud_provider_aws_ec2_qualys_scanner_to_boolean
+      type: boolean
+      ignore_missing: true
+      on_failure:
+        - remove:
+            field: qualys_gav.asset.cloud_provider.aws.ec2.qualys_scanner
+            ignore_missing: true
+        - append:
+            field: error.message
+            value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
+  - convert:
+      field: qualys_gav.asset.cloud_provider.aws.ec2.spot_instance
+      tag: convert_qualys_gav_asset_cloud_provider_aws_ec2_spot_instance_to_boolean
+      type: boolean
+      ignore_missing: true
+      on_failure:
+        - remove:
+            field: qualys_gav.asset.cloud_provider.aws.ec2.spot_instance
+            ignore_missing: true
+        - append:
+            field: error.message
+            value: 'Processor {{{_ingest.on_failure_processor_type}}} with tag {{{_ingest.on_failure_processor_tag}}} in pipeline {{{_ingest.on_failure_pipeline}}} failed with message: {{{_ingest.on_failure_message}}}'
+  - convert:
+      field: qualys_gav.asset.cloud_provider.ibm.virtual_server.ibm_id
+      tag: convert_qualys_gav_asset_cloud_provider_ibm_virtual_server_ibm_id_to_string
+      type: string
+      ignore_missing: true
   - convert:
       field: qualys_gav.asset.risk_score
       tag: convert_qualys_gav_asset_risk_score_to_float
