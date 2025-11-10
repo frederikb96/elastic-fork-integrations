@@ -52,9 +52,9 @@ echo "[1/4] Querying EPR server for currently deployed packages..."
 DEPLOYED_VERSIONS=$(mktemp)
 trap "rm -f $DEPLOYED_VERSIONS" EXIT
 
-# SSH to EPR server and list all .zip files
-# Format expected: packagename-1.2.3.zip
-if ssh epr-server "ls ${EPR_DEPLOY_PATH}/*.zip 2>/dev/null" > "$DEPLOYED_VERSIONS" 2>&1; then
+# SSH to EPR server and list just filenames (not full paths)
+# This simplifies version extraction: azure-1.29.0.zip instead of /opt/.../azure-1.29.0.zip
+if ssh epr-server "cd ${EPR_DEPLOY_PATH} && ls *.zip 2>/dev/null" > "$DEPLOYED_VERSIONS" 2>&1; then
     DEPLOYED_COUNT=$(wc -l < "$DEPLOYED_VERSIONS" | tr -d ' ')
     echo "✓ Found $DEPLOYED_COUNT deployed packages on EPR server"
 else
@@ -111,8 +111,10 @@ for package_dir in packages/*/; do
     # Check if package is deployed and get its version
     deployed_version=""
     if [[ -s "$DEPLOYED_VERSIONS" ]]; then
-        # Extract version from deployed filename: packagename-1.2.3.zip
-        deployed_version=$(grep -o "/${pkg_name}-[0-9][^/]*\.zip" "$DEPLOYED_VERSIONS" 2>/dev/null | sed -E "s|/${pkg_name}-([0-9][^/]*)\.zip|\1|" | head -1) || true
+        # Find line starting with package name: azure-1.29.0.zip
+        # Extract version by removing prefix (pkg_name-) and suffix (.zip)
+        deployed_version=$(grep "^${pkg_name}-" "$DEPLOYED_VERSIONS" 2>/dev/null | \
+                          sed "s/^${pkg_name}-//;s/\.zip$//" | head -1) || true
     fi
 
     # Compare versions (simple equality check)
