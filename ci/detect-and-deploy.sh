@@ -72,23 +72,39 @@ echo "[2/4] Detecting packages with version changes..."
 
 CHANGED_PACKAGES=()
 TOTAL_PACKAGES=0
+SKIPPED_PACKAGES=0
+
+# Temporarily disable exit-on-error for package iteration
+# We want to skip problematic packages, not fail the entire job
+set +e
 
 for package_dir in packages/*/; do
     TOTAL_PACKAGES=$((TOTAL_PACKAGES + 1))
     pkg_name=$(basename "$package_dir")
     manifest="$package_dir/manifest.yml"
 
+    # Debug: Show which package we're processing
+    if [[ $((TOTAL_PACKAGES % 50)) -eq 0 ]]; then
+        echo "  ... processed $TOTAL_PACKAGES packages so far"
+    fi
+
     if [[ ! -f "$manifest" ]]; then
         echo "  ⚠ Skipping $pkg_name (no manifest.yml)"
+        SKIPPED_PACKAGES=$((SKIPPED_PACKAGES + 1))
         continue
     fi
 
     # Extract version from manifest.yml
     # Format: "version: 1.2.3" or "version: \"1.2.3\""
-    repo_version=$(grep -E '^version:' "$manifest" | head -1 | sed -E 's/^version:\s*"?([^"]+)"?/\1/' | tr -d ' ')
+    repo_version=$(grep -E '^version:' "$manifest" 2>/dev/null | head -1 | sed -E 's/^version:\s*"?([^"]+)"?/\1/' | tr -d ' ') || {
+        echo "  ⚠ Skipping $pkg_name (failed to extract version from manifest)"
+        SKIPPED_PACKAGES=$((SKIPPED_PACKAGES + 1))
+        continue
+    }
 
     if [[ -z "$repo_version" ]]; then
         echo "  ⚠ Skipping $pkg_name (no version in manifest)"
+        SKIPPED_PACKAGES=$((SKIPPED_PACKAGES + 1))
         continue
     fi
 
@@ -96,7 +112,7 @@ for package_dir in packages/*/; do
     deployed_version=""
     if [[ -s "$DEPLOYED_VERSIONS" ]]; then
         # Extract version from deployed filename: packagename-1.2.3.zip
-        deployed_version=$(grep -o "/${pkg_name}-[0-9][^/]*\.zip" "$DEPLOYED_VERSIONS" | sed -E "s|/${pkg_name}-([0-9][^/]*)\.zip|\1|" | head -1)
+        deployed_version=$(grep -o "/${pkg_name}-[0-9][^/]*\.zip" "$DEPLOYED_VERSIONS" 2>/dev/null | sed -E "s|/${pkg_name}-([0-9][^/]*)\.zip|\1|" | head -1) || true
     fi
 
     # Compare versions (simple equality check)
@@ -109,9 +125,13 @@ for package_dir in packages/*/; do
     fi
 done
 
+# Re-enable exit-on-error for subsequent steps
+set -e
+
 echo ""
 echo "Summary:"
 echo "  Total packages in repo: $TOTAL_PACKAGES"
+echo "  Skipped packages: $SKIPPED_PACKAGES"
 echo "  Changed packages: ${#CHANGED_PACKAGES[@]}"
 
 if [[ ${#CHANGED_PACKAGES[@]} -eq 0 ]]; then
