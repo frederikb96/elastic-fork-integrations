@@ -14,7 +14,7 @@ Standard Elastic integrations with `dynamic_dataset: true` generate wildcard API
 
 ## Architecture
 
-- **Branch:** `main-soc` (tracks upstream `main` + SOC patches)
+- **Branch:** `main` (tracks upstream `main` + SOC patches)
 - **Upstream:** [elastic/integrations](https://github.com/elastic/integrations)
 - **Deployment:** GitLab CI builds packages → deploys to custom EPR
 
@@ -23,12 +23,12 @@ Standard Elastic integrations with `dynamic_dataset: true` generate wildcard API
 **Daily Schedule (09:00):** Automatically merges upstream Elastic integrations and deploys to EPR.
 
 **Pipeline Stages:**
-1. **Merge:** Pull latest from elastic/integrations `main` → merge into `main-soc`
+1. **Merge:** Pull latest from elastic/integrations `main` → merge into `main`
 2. **Deploy:** Build all packages → rsync to EPR server
 
 **How it works:**
 - Upstream changes automatically merged (conflicts fail pipeline for manual resolution)
-- `README.md` always preserved from `main-soc` branch (via ephemeral `.gitattributes` created in pipeline)
+- `README.md` always preserved from `main` branch (via ephemeral `.gitattributes` created in pipeline)
 - All packages built with `elastic-package`
 - Deployed to `/opt/sva-soc-epr/packages/` on EPR server
 
@@ -69,7 +69,7 @@ Go to **Settings → CI/CD → Variables** and add:
    - Description: `Daily upstream sync and EPR deployment`
    - Interval pattern: `0 9 * * *` (09:00 UTC daily)
    - Cron timezone: UTC
-   - Target branch: `main-soc`
+   - Target branch: `main`
    - Activated: ✅
 4. Save schedule
 
