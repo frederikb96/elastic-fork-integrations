@@ -1,0 +1,156 @@
+---
+# Elastic Integrations SOC - Automated Merge and Deploy Pipeline
+
+stages:
+  - merge
+  - deploy
+
+# ============================================================================
+# MERGE PIPELINE: Scheduled upstream sync
+# ============================================================================
+merge:upstream:
+  stage: merge
+  image: alpine:latest
+  tags: ["docker"]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
+      when: always
+    - when: never
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0  # Full clone needed for merge
+  before_script:
+    - apk add --no-cache git bash
+    # Configure git merge driver for "ours" strategy (keeps our files during conflicts)
+    - git config merge.ours.driver true
+    # This then applies the "ours" strategy to README.md specifically ONLY
+    - echo "README.md merge=ours" > .gitattributes
+  script:
+    - |
+      set -e  # Exit on any error
+
+      echo "================================================================"
+      echo "Merging upstream Elastic integrations into main"
+      echo "================================================================"
+
+      # Configure git
+      git config user.email "ci@sva.de"
+      git config user.name "SOC-CI"
+
+      # Setup authentication for push operations
+      git remote set-url origin "https://ci:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+
+      # Fetch upstream (Elastic official integrations repo) and our origin
+      echo "Fetching upstream Elastic integrations..."
+      git remote add upstream https://github.com/elastic/integrations.git || true
+      git fetch upstream main
+      git fetch origin main
+
+      # Ensure we're on our main branch (origin/main, NOT upstream/main)
+      echo "Checking out our main branch from origin..."
+      git checkout -B main origin/main
+
+      # Perform merge (--no-commit to allow README.md checkout)
+      echo "Merging upstream/main into our main..."
+      if git merge --no-commit --no-ff upstream/main; then
+        echo "✓ Merge successful (no conflicts or resolved by .gitattributes)"
+
+        # Force checkout our README.md to ensure we keep our version
+        echo "Ensuring README.md stays ours..."
+        git checkout HEAD -- README.md
+
+        # Commit the merge
+        if git commit -m "Auto-merge upstream Elastic integrations (${CI_PIPELINE_SOURCE})"; then
+          echo "✓ Merge committed successfully"
+
+          # Push to origin (this will trigger deploy pipeline if packages changed)
+          echo "Pushing merge to origin..."
+          if git push origin main; then
+            echo "✅ Successfully merged and pushed upstream changes!"
+            echo "   Deploy pipeline will automatically trigger if packages changed."
+          else
+            echo "❌ ERROR: Failed to push merge to origin"
+            exit 1
+          fi
+        else
+          echo "✓ No changes to commit (already up to date)"
+        fi
+      else
+        # Merge conflict detected
+        echo "❌ ERROR: Merge conflict detected!"
+        echo ""
+        echo "Conflicting files:"
+        git status --short | grep '^UU' || git status --short
+        echo ""
+        echo "Please resolve conflicts manually and update .gitattributes if needed."
+        git merge --abort
+        exit 1
+      fi
+
+# ============================================================================
+# DEPLOY PIPELINE: Build and deploy changed packages
+# ============================================================================
+deploy:packages:
+  stage: deploy
+  image: debian:latest
+  tags: ["docker"]
+  rules:
+    # Run on any push/merge to main branch that touches packages/
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - packages/**/*
+      when: always
+    - when: never
+  variables:
+    GIT_STRATEGY: clone
+    EPR_DEPLOY_PATH: "/opt/sva-soc-epr/packages"
+  before_script:
+    # Install required tools
+    - |
+      apt-get update
+      apt-get install -y curl wget git openssh-client rsync jq yq
+
+    # Install elastic-package CLI (latest version)
+    - |
+      echo "Installing elastic-package CLI..."
+      LATEST_VERSION=$(curl -s https://api.github.com/repos/elastic/elastic-package/releases/latest | jq -r '.tag_name')
+      echo "Latest elastic-package version: $LATEST_VERSION"
+
+      wget -q "https://github.com/elastic/elastic-package/releases/download/${LATEST_VERSION}/elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
+      tar -xzf "elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
+      mv elastic-package /usr/local/bin/
+      chmod +x /usr/local/bin/elastic-package
+
+      echo "✓ elastic-package installed:"
+      elastic-package version
+
+    # Setup SSH key for EPR server access
+    - |
+      echo "Setting up SSH key for EPR server..."
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+
+      # Write SSH key from CI/CD variable
+      echo "$SSH_KEY_EPR" > ~/.ssh/epr_deploy_key
+      chmod 600 ~/.ssh/epr_deploy_key
+
+      # Configure SSH
+      cat > ~/.ssh/config <<EOF
+      Host epr-server
+          HostName ${SSH_HOST_EPR}
+          User ${SSH_USER_EPR}
+          IdentityFile ~/.ssh/epr_deploy_key
+          StrictHostKeyChecking no
+          UserKnownHostsFile=/dev/null
+      EOF
+      chmod 600 ~/.ssh/config
+
+      echo "✓ SSH key configured"
+  script:
+    # Run detect-and-deploy script
+    # This script will:
+    #   1. Query EPR server for deployed package versions
+    #   2. Compare with repo manifest.yml versions
+    #   3. Build only packages with version changes
+    #   4. Rsync all built packages to EPR server
+    - ./ci/detect-and-deploy.sh

@@ -1,44 +1,101 @@
-[![Build status](https://badge.buildkite.com/153e2f7f984d3b1b350d8cb5d2fe7e7ae924982d5bd5b5ee49.svg?branch=main)](https://buildkite.com/elastic/integrations)
+# Elastic Integrations - SOC Fork
 
-# Elastic Integrations
+Fork of [elastic/integrations](https://github.com/elastic/integrations) maintained for SVA SOC multi-tenant deployments. This repository contains patched integration packages that enforce namespace isolation by removing `dynamic_dataset` flags and allowing custom integrations.
 
-This repository contains sources for Elastic Integrations. Each Elastic Integration is an Elastic Package that defines how to observe a specific product with the Elastic Stack.
+**EPR Deployment:** [elastic-epr-soc](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/elastic-epr-soc)
 
-An Elastic Package may define configuration for the [Elastic Agent](#elastic-agent) as well as assets (such as Kibana dashboards and Elasticsearch index templates) for the Elastic Stack. It should also define documentation about the package. Finally, a package may also define tests to ensure that it is functioning as expected.
+## Purpose
 
-Elastic Packages have a certain, well-defined structure. This structure is described by the [Package Specification](#package-specification). The repository is also used for discussions about extending the specification (with proposals).
+Standard Elastic integrations with `dynamic_dataset: true` generate wildcard API keys (`logs-*-*`) that break namespace boundaries in multi-tenant environments. This fork provides patched versions where:
 
-While this repository contains _sources_ for Elastic Integrations, _built_ Elastic Integrations are published into a storage based on Google Cloud bucket (more info [here](https://github.com/elastic/elastic-package/blob/85d6fcacad736e543e459a044a5e0fa48b5d43c6/docs/howto/use_package_storage_v2.md)) and served up via the [Package Registry](#package-registry). The Fleet UI in Kibana connects to the Package Registry and allows users to discover, install, and configure Elastic Packages.
+- `dynamic_dataset` and `dynamic_namespace` flags are removed from manifests
+- Integrations adjusted to support customer namespaces
+- Custom Integrations can be added as needed
 
-## Documentation
-Public documentation is compiled and exported to our [Elastic docs](https://www.elastic.co/docs/current/integrations).
+## Architecture
 
-## Contributing
+- **Branch:** `main-soc` (tracks upstream `main` + SOC patches)
+- **Upstream:** [elastic/integrations](https://github.com/elastic/integrations)
+- **Deployment:** GitLab CI builds packages → deploys to custom EPR
 
-Please review the [Contributing Guide](CONTRIBUTING.md) to learn how to build and develop packages, understand the release procedure and
-explore the builder tools.
+## Automated Sync Pipeline
 
- More information about the CI pipelines that are available in this repostiory [here](./docs/ci_pipelines.md).
+**Daily Schedule (09:00):** Automatically merges upstream Elastic integrations and deploys to EPR.
 
-## External links
+**Pipeline Stages:**
+1. **Merge:** Pull latest from elastic/integrations `main` → merge into `main-soc`
+2. **Deploy:** Build all packages → rsync to EPR server
 
-### Package Specification
-* [Repository](https://github.com/elastic/package-spec)
-* [Explore the package specification](https://github.com/elastic/package-spec/tree/main/spec)
-* [Suggest changes to the package specification](https://github.com/elastic/package-spec/issues/new)
-  repository. Let's discuss any spec extensions together
+**How it works:**
+- Upstream changes automatically merged (conflicts fail pipeline for manual resolution)
+- `README.md` always preserved from `main-soc` branch (via ephemeral `.gitattributes` created in pipeline)
+- All packages built with `elastic-package`
+- Deployed to `/opt/sva-soc-epr/packages/` on EPR server
 
-### Elastic Package
-* [Repository](https://github.com/elastic/elastic-package)
-* [Changelog of the `elastic-package` releases](https://github.com/elastic/elastic-package/releases)
+## CI/CD Setup
 
-### Package Registry
-* [Repository](https://github.com/elastic/package-registry)
-* [Release latest changes introduced to the Package Registry](https://github.com/elastic/package-registry/#release)
+### Required CI/CD Variables
 
-### Elastic Agent
-* [Repository](https://github.com/elastic/elastic-agent/tree/main)
+Go to **Settings → CI/CD → Variables** and add:
 
-## Test Coverage
+1. **GITLAB_TOKEN**
+   - Type: Variable
+   - Value: The GitLab Personal Access Token created below
+   - Flags: ✅ Protect variable, ✅ Mask variable
 
-[![Test Coverage Report](https://fleet-ci.elastic.co/job/ingest-manager/job/integrations/job/main/cobertura/graph)](https://fleet-ci.elastic.co/job/Ingest-manager/job/integrations/job/main/cobertura/)
+2. **SSH_KEY_EPR**
+   - Type: Variable
+   - Value: Private SSH key for EPR server access
+
+3. **SSH_USER_EPR**
+
+4. **SSH_HOST_EPR**
+
+### GitLab Token Setup
+
+1. Go to **Settings → Access Tokens**
+2. Create new token:
+   - Name: `CI Pipeline Token`
+   - Scopes: Select **all available scopes** (to avoid permission issues)
+   - Expiration: Set to maximum allowed
+3. Copy token immediately
+4. Add to **Settings → CI/CD → Variables** as `GITLAB_TOKEN`
+
+### Pipeline Schedule Setup
+
+1. Go to **CI/CD → Schedules**
+2. Click **New schedule**
+3. Configure:
+   - Description: `Daily upstream sync and EPR deployment`
+   - Interval pattern: `0 9 * * *` (09:00 UTC daily)
+   - Cron timezone: UTC
+   - Target branch: `main-soc`
+   - Activated: ✅
+4. Save schedule
+
+## Local Development
+
+### Prerequisites
+
+- Docker
+- `elastic-package` CLI ([installation](https://github.com/elastic/elastic-package))
+
+### Build Single Package
+
+```bash
+cd packages/azure
+elastic-package build
+```
+
+### Build All Packages
+
+```bash
+./ci/build-all-packages.sh
+```
+
+### Deploy to EPR Manually
+
+```bash
+# After building packages
+rsync -avz build/packages/ $SSH_USER_EPR@$SSH_HOST_EPR:/opt/sva-soc-epr/packages/
+```
