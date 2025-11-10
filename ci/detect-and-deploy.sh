@@ -211,8 +211,9 @@ fi
 # Rsync all built packages to EPR server
 # Permission flags ensure no conflicts between different users (SSH user, root, etc)
 echo "Syncing ${#BUILT_PACKAGES[@]} packages to epr-server:${EPR_DEPLOY_PATH}..."
-if rsync -avh --stats \
+if rsync -rvh --stats \
     --chmod=D777,F666 \
+    --no-perms --no-times \
     --no-owner --no-group \
     build/packages/ \
     "epr-server:${EPR_DEPLOY_PATH}/"; then
