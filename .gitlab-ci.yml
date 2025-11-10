@@ -96,6 +96,9 @@ deploy:packages:
   tags: ["docker"]
   rules:
     # Run on any push/merge to main branch that touches packages/
+    # BUT NOT on scheduled pipelines (merge will trigger a new pipeline via commit)
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - packages/**/*
