@@ -21,6 +21,30 @@ echo "================================================================"
 echo ""
 
 # ============================================================================
+# STEP 0: Test SSH connectivity (fail fast if broken)
+# ============================================================================
+echo "[0/4] Testing SSH connectivity to EPR server..."
+
+if ! ssh -o ConnectTimeout=10 epr-server "echo 'SSH connection successful'" >/dev/null 2>&1; then
+    echo "❌ ERROR: Cannot connect to EPR server via SSH"
+    echo ""
+    echo "Troubleshooting checklist:"
+    echo "  1. Check CI/CD variables are set:"
+    echo "     - SSH_HOST_EPR (EPR server IP/hostname)"
+    echo "     - SSH_USER_EPR (SSH username)"
+    echo "     - SSH_KEY_EPR (private key content)"
+    echo "  2. Verify EPR server is reachable from GitLab runner"
+    echo "  3. Check firewall allows SSH from runner to EPR server"
+    echo "  4. Verify SSH key has correct permissions (600)"
+    echo "  5. Test manually: ssh -i ~/.ssh/epr_deploy_key \${SSH_USER_EPR}@\${SSH_HOST_EPR}"
+    echo ""
+    exit 1
+fi
+
+echo "✓ SSH connectivity confirmed"
+echo ""
+
+# ============================================================================
 # STEP 1: Get deployed package versions from EPR server
 # ============================================================================
 echo "[1/4] Querying EPR server for currently deployed packages..."
