@@ -103,6 +103,7 @@ deploy:packages:
       changes:
         - packages/**/*
         - ci/detect-and-deploy.py
+        - .gitlab-ci.yml
       when: always
     - when: never
   variables:
