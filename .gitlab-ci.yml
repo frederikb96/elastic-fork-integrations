@@ -95,13 +95,14 @@ deploy:packages:
   image: debian:latest
   tags: ["docker"]
   rules:
-    # Run on any push/merge to main branch that touches packages/
+    # Run on any push/merge to main branch that touches packages/ or deploy script
     # BUT NOT on scheduled pipelines (merge will trigger a new pipeline via commit)
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - packages/**/*
+        - ci/detect-and-deploy.sh
       when: always
     - when: never
   variables:

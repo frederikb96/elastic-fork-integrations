@@ -211,7 +211,7 @@ fi
 # Rsync all built packages to EPR server
 # Permission flags ensure no conflicts between different users (SSH user, root, etc)
 echo "Syncing ${#BUILT_PACKAGES[@]} packages to epr-server:${EPR_DEPLOY_PATH}..."
-if rsync -rvh --stats \
+if rsync -rh --stats \
     --chmod=D777,F666 \
     --no-perms --no-times \
     --no-owner --no-group \
@@ -222,6 +222,20 @@ if rsync -rvh --stats \
 else
     echo ""
     echo "❌ ERROR: Failed to deploy packages to EPR server"
+    exit 1
+fi
+
+echo ""
+echo "================================================================"
+echo "Restarting EPR container to load new packages"
+echo "================================================================"
+
+# Restart EPR container to pick up newly deployed packages
+# EPR only loads packages at startup - no automatic reloading
+if ssh epr-server "cd ${EPR_DEPLOY_PATH} && sudo docker restart epr" 2>&1; then
+    echo "✅ EPR container restarted successfully"
+else
+    echo "❌ ERROR: Failed to restart EPR container"
     exit 1
 fi
 
