@@ -107,7 +107,6 @@ deploy:packages:
       when: always
     - when: never
   variables:
-    GIT_STRATEGY: clone
     EPR_DEPLOY_PATH: "/opt/sva-soc-epr/packages"
   before_script:
     # Install required tools (suppress stdout, show only errors)
