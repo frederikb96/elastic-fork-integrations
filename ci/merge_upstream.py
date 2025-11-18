@@ -256,7 +256,7 @@ def manage_fix_branch(mr_exists: bool) -> None:
             run_command(["git", "checkout", "-b", FIX_BRANCH, f"origin/{FIX_BRANCH}"])
     else:
         print("✓ Branch does not exist - creating new branch...")
-        run_command(["git", "checkout", "-b", FIX_BRANCH"])
+        run_command(["git", "checkout", "-b", FIX_BRANCH])
 
 
 def run_auto_fix() -> int:
