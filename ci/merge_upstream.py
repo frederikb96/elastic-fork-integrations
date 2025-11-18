@@ -32,7 +32,6 @@ API_TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))
 
 # CI environment variables
 GITLAB_TOKEN = os.getenv("GITLAB_TOKEN", "")
-CI_JOB_TOKEN = os.getenv("CI_JOB_TOKEN", "")
 CI_SERVER_HOST = os.getenv("CI_SERVER_HOST", "")
 CI_PROJECT_PATH = os.getenv("CI_PROJECT_PATH", "")
 CI_API_V4_URL = os.getenv("CI_API_V4_URL", "")
@@ -186,8 +185,8 @@ def get_existing_mr() -> Optional[Dict]:
     """
     print("\nChecking if merge request already exists...")
 
-    if not CI_JOB_TOKEN:
-        print("⚠️  WARNING: CI_JOB_TOKEN not set, skipping MR check")
+    if not GITLAB_TOKEN:
+        print("⚠️  WARNING: GITLAB_TOKEN not set, skipping MR check")
         return None
 
     url = f"{CI_API_V4_URL}/projects/{CI_PROJECT_ID}/merge_requests"
@@ -196,7 +195,7 @@ def get_existing_mr() -> Optional[Dict]:
         "source_branch": FIX_BRANCH,
         "target_branch": MR_TARGET,
     }
-    headers = {"JOB-TOKEN": CI_JOB_TOKEN}
+    headers = {"PRIVATE-TOKEN": GITLAB_TOKEN}
 
     try:
         response = requests.get(
@@ -343,8 +342,8 @@ def create_mr() -> Optional[str]:
     """
     print("\nCreating merge request...")
 
-    if not CI_JOB_TOKEN:
-        print("⚠️  WARNING: CI_JOB_TOKEN not set, cannot create MR via API")
+    if not GITLAB_TOKEN:
+        print("⚠️  WARNING: GITLAB_TOKEN not set, cannot create MR via API")
         return None
 
     # Validate template file exists
@@ -357,7 +356,7 @@ def create_mr() -> Optional[str]:
 
     # Create MR via API
     url = f"{CI_API_V4_URL}/projects/{CI_PROJECT_ID}/merge_requests"
-    headers = {"JOB-TOKEN": CI_JOB_TOKEN, "Content-Type": "application/json"}
+    headers = {"PRIVATE-TOKEN": GITLAB_TOKEN, "Content-Type": "application/json"}
     data = {
         "source_branch": FIX_BRANCH,
         "target_branch": MR_TARGET,
