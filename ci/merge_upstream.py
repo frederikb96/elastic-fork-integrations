@@ -362,6 +362,7 @@ def create_mr() -> Optional[str]:
         "target_branch": MR_TARGET,
         "title": "⚠️  Auto-fix: Remove dynamic_dataset flags from upstream merge",
         "description": mr_description,
+        "remove_source_branch": True,
     }
 
     try:
