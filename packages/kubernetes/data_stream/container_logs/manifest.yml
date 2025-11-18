@@ -1,4 +1,4 @@
-title: "Kubernetes container logs"
+title: "(⚠️ SVA RESTRICTED) Kubernetes container logs"
 type: logs
 dataset: kubernetes.container_logs
 streams:
@@ -102,6 +102,3 @@ streams:
         type: yaml
         default: ""
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
