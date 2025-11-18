@@ -54,14 +54,23 @@ class IntegrationProcessor:
                 with open(manifest_path, "r") as f:
                     data = self.yaml.load(f)
 
+                # Handle empty YAML files
+                if data is None:
+                    self.affected_data_streams[ds_path.name] = False
+                    continue
+
                 # Check for elasticsearch section with dynamic flags
                 if "elasticsearch" in data:
                     es_section = data["elasticsearch"]
-                    has_flags = (
-                        es_section.get("dynamic_dataset") is True
-                        or es_section.get("dynamic_namespace") is True
-                    )
-                    self.affected_data_streams[ds_path.name] = has_flags
+                    # Handle elasticsearch: null or elasticsearch: {}
+                    if es_section is None or not isinstance(es_section, dict):
+                        self.affected_data_streams[ds_path.name] = False
+                    else:
+                        has_flags = (
+                            es_section.get("dynamic_dataset") is True
+                            or es_section.get("dynamic_namespace") is True
+                        )
+                        self.affected_data_streams[ds_path.name] = has_flags
                 else:
                     self.affected_data_streams[ds_path.name] = False
 
