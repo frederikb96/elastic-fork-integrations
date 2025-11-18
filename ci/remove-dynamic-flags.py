@@ -367,8 +367,12 @@ class OverviewManager:
             sys.exit(1)
 
 
-def main():
-    """Main entry point."""
+def main() -> int:
+    """Main entry point.
+
+    Returns:
+        0 on success, 1 on failure
+    """
     print("=" * 70)
     print("Dynamic Dataset Flag Removal Script")
     print("=" * 70)
@@ -381,7 +385,7 @@ def main():
     # Check packages directory exists
     if not PACKAGES_DIR.exists():
         print(f"❌ ERROR: Packages directory not found: {PACKAGES_DIR}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     # Scan all integrations
     affected_integrations: Dict[str, Dict] = {}
@@ -410,8 +414,8 @@ def main():
         print(f"\n✓ No integrations with dynamic flags found")
 
     print("=" * 70)
-    sys.exit(0)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

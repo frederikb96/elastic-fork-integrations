@@ -1,4 +1,5 @@
 # Python dependencies for merge pipeline
-# Used by ci/remove-dynamic-flags.py
+# Used by ci/merge_upstream.py and ci/remove-dynamic-flags.py
 
 ruamel.yaml>=0.17.0
+requests>=2.31.0

@@ -2,8 +2,49 @@
 # Elastic Integrations SOC - Automated Merge and Deploy Pipeline
 
 stages:
+  - test
   - merge
   - deploy
+
+# ============================================================================
+# TEST: Echo CI variables for local .env file setup
+# ============================================================================
+test:ci-vars:
+  stage: test
+  image: alpine:latest
+  tags: ["docker"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+    - when: never
+  script:
+    - |
+      echo "# GitLab CI Environment Variables"
+      echo "# Generated: $(date)"
+      echo "# Copy these to ci/.env.local for local testing"
+      echo ""
+      echo "# Git authentication (CRITICAL - needs write access to main branch)"
+      echo "export GITLAB_TOKEN=\"your-token-here\"  # Get from GitLab CI/CD variables"
+      echo ""
+      echo "# GitLab API authentication (for MR operations)"
+      echo "export CI_JOB_TOKEN=\"cannot-be-echoed\"  # Job token is secret, use GITLAB_TOKEN locally"
+      echo ""
+      echo "# GitLab server details"
+      echo "export CI_SERVER_HOST=\"${CI_SERVER_HOST}\""
+      echo "export CI_PROJECT_PATH=\"${CI_PROJECT_PATH}\""
+      echo ""
+      echo "# GitLab API endpoints"
+      echo "export CI_API_V4_URL=\"${CI_API_V4_URL}\""
+      echo "export CI_PROJECT_ID=\"${CI_PROJECT_ID}\""
+      echo "export CI_PROJECT_URL=\"${CI_PROJECT_URL}\""
+      echo ""
+      echo "# Pipeline metadata"
+      echo "export CI_PIPELINE_SOURCE=\"schedule\""
+      echo ""
+      echo "# Script configuration (optional overrides)"
+      echo "export FIX_BRANCH=\"auto-fix-dynamic-flags\""
+      echo "export MR_TARGET=\"main\""
+      echo "export API_TIMEOUT=\"30\""
 
 # ============================================================================
 # MERGE PIPELINE: Scheduled upstream sync
@@ -21,8 +62,7 @@ merge:upstream:
     GIT_DEPTH: 0  # Full clone needed for merge
   before_script:
     # Install required tools
-    - |
-      apk add --no-cache git bash python3 py3-pip py3-virtualenv
+    - apk add --no-cache git python3 py3-pip py3-virtualenv
 
     # Create and activate Python venv, install dependencies
     - |
@@ -35,256 +75,10 @@ merge:upstream:
 
     # Configure git merge driver for "ours" strategy (keeps our files during conflicts)
     - git config merge.ours.driver true
-    # This then applies the "ours" strategy to README.md specifically ONLY
     - echo "README.md merge=ours" > .gitattributes
   script:
-    - |
-      set -e  # Exit on any error
-
-      echo "================================================================"
-      echo "Merging upstream Elastic integrations into main"
-      echo "================================================================"
-
-      # Constants
-      FIX_BRANCH="auto-fix-dynamic-flags"
-      MR_TARGET="main"
-      API_TIMEOUT=30
-
-      # Validate required tools
-      command -v jq >/dev/null 2>&1 || { echo "❌ ERROR: jq not found"; exit 1; }
-      command -v curl >/dev/null 2>&1 || { echo "❌ ERROR: curl not found"; exit 1; }
-
-      # Configure git identity and authentication
-      # Note: GITLAB_TOKEN (not CI_JOB_TOKEN) required for write access to protected main branch
-      # CI_JOB_TOKEN used separately for GitLab API calls (sufficient for MR operations)
-      git config user.email "ci@sva.de"
-      git config user.name "SOC-CI"
-      git remote set-url origin "https://ci:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-
-      # Fetch upstream (Elastic official integrations repo) and our origin
-      echo "Fetching upstream Elastic integrations..."
-      git remote add upstream https://github.com/elastic/integrations.git || true
-      git fetch upstream main
-      git fetch origin main
-
-      # Ensure we're on our main branch (origin/main, NOT upstream/main)
-      echo "Checking out our main branch from origin..."
-      git checkout -B main origin/main
-
-      # Perform merge (--no-commit to allow README.md checkout)
-      echo "Merging upstream/main into our main..."
-      if git merge --no-commit --no-ff upstream/main; then
-        echo "✓ Merge successful (no conflicts or resolved by .gitattributes)"
-
-        # Force checkout our README.md to ensure we keep our version
-        echo "Ensuring README.md stays ours..."
-        git checkout HEAD -- README.md
-
-        # Check for dynamic_dataset/dynamic_namespace flags
-        # Workflow: If flags found → create MR for manual review
-        #           If no flags → direct merge to main (business as usual)
-        echo ""
-        echo "================================================================"
-        echo "Checking for dynamic_dataset/dynamic_namespace flags..."
-        echo "================================================================"
-
-        # Run grep once and store result for reuse
-        if grep -r "dynamic_dataset.*true" packages/ || grep -r "dynamic_namespace.*true" packages/; then
-          echo ""
-          echo "⚠️  Dynamic flags detected - initiating MR workflow..."
-          echo ""
-
-          # Check if MR already exists (using GitLab API v4)
-          echo "Checking if merge request already exists..."
-          MR_LIST=$(curl -s --max-time ${API_TIMEOUT} --fail \
-            --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests?state=opened&source_branch=${FIX_BRANCH}&target_branch=${MR_TARGET}" \
-            || echo '[]')
-
-          MR_EXISTS=$(echo "$MR_LIST" | jq -r 'length')
-          MR_WEB_URL=$(echo "$MR_LIST" | jq -r '.[0].web_url // empty')
-
-          if [ "$MR_EXISTS" -gt 0 ]; then
-            echo "✓ Merge request already exists - will update it with new changes"
-            echo "   MR: $MR_WEB_URL"
-            # TODO: Don't send notification mail (MR already exists)
-          else
-            echo "✓ No existing merge request found - will create new one"
-            # TODO: Send notification mail about new auto-fix MR requiring review
-          fi
-
-          # Branch lifecycle management
-          # Logic: If merged → recreate clean; if exists with changes → reuse; if not exists → create
-          echo ""
-          echo "Checking if fix branch exists..."
-          if git ls-remote --heads --exit-code origin "$FIX_BRANCH" >/dev/null 2>&1; then
-            echo "✓ Branch $FIX_BRANCH exists"
-            git fetch origin "$FIX_BRANCH"
-
-            # Check if branch is fully merged into target
-            echo "Checking if branch is merged into $MR_TARGET..."
-            MERGE_BASE=$(git merge-base origin/"$MR_TARGET" origin/"$FIX_BRANCH")
-            FIX_HEAD=$(git rev-parse origin/"$FIX_BRANCH")
-
-            if [ "$MERGE_BASE" = "$FIX_HEAD" ]; then
-              echo "✓ Branch is fully merged - deleting and recreating..."
-              git push origin --delete "$FIX_BRANCH" || echo "⚠️  Branch delete failed, continuing..."
-              git checkout -b "$FIX_BRANCH"
-            else
-              echo "✓ Branch not fully merged - reusing existing branch..."
-              git checkout -b "$FIX_BRANCH" origin/"$FIX_BRANCH"
-            fi
-          else
-            echo "✓ Branch does not exist - creating new branch..."
-            git checkout -b "$FIX_BRANCH"
-          fi
-
-          echo ""
-          echo "Running auto-fix script on $FIX_BRANCH..."
-
-          # Activate venv and run auto-fix script
-          source .venv/bin/activate
-          echo ""
-          if python3 ci/remove-dynamic-flags.py; then
-            echo ""
-            echo "✓ Auto-fix script completed successfully"
-
-            # Stage modifications (only files the script should modify)
-            echo "Staging modified files..."
-            git add packages/ DYNAMIC_DATASET_MODIFICATIONS.md
-
-            # Validate cleanup succeeded
-            echo "Validating cleanup..."
-            if grep -rq "dynamic_dataset.*true" packages/ || grep -rq "dynamic_namespace.*true" packages/; then
-              echo ""
-              echo "❌ ERROR: Dynamic flags still present after cleanup!"
-              echo "   The script failed to remove all flags. Manual investigation required."
-              exit 1
-            fi
-            echo "✅ All dynamic flags removed successfully"
-
-            # Commit changes on fix branch
-            echo ""
-            echo "Committing changes on $FIX_BRANCH..."
-            if git commit -F ci/templates/auto-fix-commit-message.txt; then
-              echo "✓ Changes committed successfully"
-
-              # Push to fix branch
-              echo "Pushing to origin/$FIX_BRANCH..."
-              if git push origin "$FIX_BRANCH"; then
-                echo "✅ Successfully pushed changes to $FIX_BRANCH"
-              else
-                echo "❌ ERROR: Failed to push to $FIX_BRANCH"
-                exit 1
-              fi
-
-              # Create MR if doesn't exist
-              if [ "$MR_EXISTS" -eq 0 ]; then
-                echo ""
-                echo "Creating merge request..."
-
-                # Validate template file exists
-                MR_TEMPLATE="ci/templates/auto-fix-merge-request.md"
-                if [ ! -f "$MR_TEMPLATE" ]; then
-                  echo "❌ ERROR: MR template not found: $MR_TEMPLATE"
-                  exit 1
-                fi
-
-                # Load MR description from template and escape for JSON
-                MR_DESCRIPTION=$(cat "$MR_TEMPLATE")
-                MR_DESCRIPTION_ESCAPED=$(echo "$MR_DESCRIPTION" | jq -Rs .)
-
-                # Create merge request via GitLab API
-                MR_RESPONSE=$(curl -s --max-time ${API_TIMEOUT} --fail --request POST \
-                  --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-                  --header "Content-Type: application/json" \
-                  --data "{\"source_branch\":\"${FIX_BRANCH}\",\"target_branch\":\"${MR_TARGET}\",\"title\":\"⚠️  Auto-fix: Remove dynamic_dataset flags from upstream merge\",\"description\":${MR_DESCRIPTION_ESCAPED}}" \
-                  "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests" \
-                  || echo '{}')
-
-                # Extract web_url from response (preferred) or construct from IID (fallback)
-                MR_WEB_URL=$(echo "$MR_RESPONSE" | jq -r '.web_url // empty')
-                MR_IID=$(echo "$MR_RESPONSE" | jq -r '.iid // empty')
-
-                if [ -n "$MR_WEB_URL" ]; then
-                  echo "✅ Merge request created: $MR_WEB_URL"
-                elif [ -n "$MR_IID" ]; then
-                  MR_WEB_URL="${CI_PROJECT_URL}/-/merge_requests/${MR_IID}"
-                  echo "✅ Merge request created: $MR_WEB_URL"
-                else
-                  echo "⚠️  WARNING: Failed to create merge request via API"
-                  echo "   Please create MR manually from $FIX_BRANCH to $MR_TARGET"
-                fi
-              else
-                echo ""
-                echo "✓ Merge request already exists - new commit will appear automatically"
-              fi
-
-              # Fail pipeline to force manual review
-              echo ""
-              echo "================================================================"
-              echo "❌ PIPELINE FAILED (BY DESIGN)"
-              echo "================================================================"
-              echo ""
-              echo "Dynamic flags were detected and automatically fixed."
-              echo "A merge request has been created/updated for manual review."
-              echo ""
-              echo "👉 Review and merge the MR to complete upstream sync:"
-              if [ -n "$MR_WEB_URL" ]; then
-                echo "   $MR_WEB_URL"
-              else
-                echo "   Check: ${CI_PROJECT_URL}/-/merge_requests"
-                echo "   Look for MR from: $FIX_BRANCH → $PR_TARGET"
-              fi
-              echo ""
-              echo "This pipeline failure is INTENTIONAL to prevent auto-merge."
-              echo "================================================================"
-              exit 1
-
-            else
-              echo "✓ No changes to commit (already up to date)"
-            fi
-
-          else
-            echo ""
-            echo "❌ ERROR: Auto-fix script failed!"
-            echo "   Check script output above for details."
-            exit 1
-          fi
-
-        else
-          echo "✓ No dynamic flags detected - proceeding with direct merge"
-          echo "================================================================"
-          echo ""
-
-          # Commit the merge (business as usual - no flags detected)
-          if git commit -m "Auto-merge upstream Elastic integrations (${CI_PIPELINE_SOURCE})"; then
-            echo "✓ Merge committed successfully"
-
-            # Push to origin (this will trigger deploy pipeline if packages changed)
-            echo "Pushing merge to origin..."
-            if git push origin main; then
-              echo "✅ Successfully merged and pushed upstream changes!"
-              echo "   Deploy pipeline will automatically trigger if packages changed."
-            else
-              echo "❌ ERROR: Failed to push merge to origin"
-              exit 1
-            fi
-          else
-            echo "✓ No changes to commit (already up to date)"
-          fi
-        fi
-      else
-        # Merge conflict detected
-        echo "❌ ERROR: Merge conflict detected!"
-        echo ""
-        echo "Conflicting files:"
-        git status --short | grep '^UU' || git status --short
-        echo ""
-        echo "Please resolve conflicts manually and update .gitattributes if needed."
-        git merge --abort
-        exit 1
-      fi
+    # Run Python merge script (all logic moved to Python for testability)
+    - source .venv/bin/activate && python3 ci/merge_upstream.py
 
 # ============================================================================
 # DEPLOY PIPELINE: Build and deploy changed packages
