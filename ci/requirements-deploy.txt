@@ -1,0 +1,4 @@
+# Python dependencies for deploy pipeline
+# Used by ci/detect-and-deploy.py
+
+PyYAML>=6.0

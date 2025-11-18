@@ -1,101 +1,135 @@
 # Elastic Integrations - SOC Fork
 
-Fork of [elastic/integrations](https://github.com/elastic/integrations) maintained for SVA SOC multi-tenant deployments. This repository contains patched integration packages that enforce namespace isolation by removing `dynamic_dataset` flags and allowing custom integrations.
+Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA SOC multi-tenant deployments.
 
-**EPR Deployment:** [elastic-epr-soc](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/elastic-epr-soc)
+**Related repo:** [elastic-epr-soc](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/elastic-epr-soc) (EPR deployment)
 
-## Purpose
+## Overview
 
-Standard Elastic integrations with `dynamic_dataset: true` generate wildcard API keys (`logs-*-*`) that break namespace boundaries in multi-tenant environments. This fork provides patched versions where:
+**Purpose:** Enable Elastic integrations in multi-tenant environments where standard packages break namespace isolation.
 
-- `dynamic_dataset` and `dynamic_namespace` flags are removed from manifests
-- Integrations adjusted to support customer namespaces
-- Custom Integrations can be added as needed
+**Problem:** Upstream integrations use `dynamic_dataset: true` flags that generate wildcard API keys (`logs-*-*`), allowing tenants to access each other's data.
 
-## Architecture
+**Solution:** Automated pipeline removes dynamic flags, marks affected integrations in Fleet UI, deploys patched packages to custom EPR.
 
-- **Branch:** `main` (tracks upstream `main` + SOC patches)
-- **Upstream:** [elastic/integrations](https://github.com/elastic/integrations)
-- **Deployment:** GitLab CI builds packages → deploys to custom EPR
+**System flow:**
+- Daily merge from upstream Elastic integrations
+- Automated detection and removal of dynamic flags
+- Modified packages deployed to EPR
+- Integrations marked with `(⚠️ SVA RESTRICTED)` prefix in Kibana Fleet
 
-## Automated Sync Pipeline
+**Tracking:** All modifications tracked in [DYNAMIC_DATASET_MODIFICATIONS.md](DYNAMIC_DATASET_MODIFICATIONS.md)
 
-**Daily Schedule (09:00):** Automatically merges upstream Elastic integrations and deploys to EPR.
+## Pipelines
 
-**Pipeline Stages:**
-1. **Merge:** Pull latest from elastic/integrations `main` → merge into `main`
-2. **Deploy:** Build all packages → rsync to EPR server
+### Merge Pipeline
 
-**How it works:**
-- Upstream changes automatically merged (conflicts fail pipeline for manual resolution)
-- `README.md` always preserved from `main` branch (via ephemeral `.gitattributes` created in pipeline)
-- All packages built with `elastic-package`
-- Deployed to `/opt/sva-soc-epr/packages/` on EPR server
+**Trigger:** Scheduled daily (09:00 UTC) or manual
 
-## CI/CD Setup
+**What it does:**
+- Fetches latest from upstream `elastic/integrations`
+- Merges into `main` branch (conflicts fail pipeline)
+- Preserves `README.md` using git merge strategy
+- Scans packages for `dynamic_dataset` and `dynamic_namespace` flags
+- Invokes auto-fix script if flags detected
+- Validates cleanup (fails if flags remain)
+- Commits all changes (merge + flag removals)
+- Triggers deploy pipeline automatically
 
-### Required CI/CD Variables
+**Auto-fix actions:**
+- Removes dynamic flags from data stream manifests
+- Prepends `(⚠️ SVA RESTRICTED)` to integration and data stream titles
+- Updates tracking file with affected integrations
+- Preserves other elasticsearch settings (index templates, mappings, etc)
 
-Go to **Settings → CI/CD → Variables** and add:
+**Result:** Patched packages ready for deployment, changes visible in git history
 
-1. **GITLAB_TOKEN**
-   - Type: Variable
-   - Value: The GitLab Personal Access Token created below
-   - Flags: ✅ Protect variable, ✅ Mask variable
+### Deploy Pipeline
 
-2. **SSH_KEY_EPR**
-   - Type: Variable
-   - Value: Private SSH key for EPR server access
+**Trigger:** Package changes on `main` branch (NOT scheduled)
 
-3. **SSH_USER_EPR**
+**What it does:**
+- Detects which packages changed since last deployment
+- Builds changed packages using `elastic-package`
+- Deploys to EPR server via rsync
+- Restarts EPR container to load new packages
 
-4. **SSH_HOST_EPR**
+**Optimization:** Only rebuilds changed packages (not all 300+ integrations)
 
-### GitLab Token Setup
+**Result:** EPR serves updated integration packages to Fleet
 
-1. Go to **Settings → Access Tokens**
-2. Create new token:
-   - Name: `CI Pipeline Token`
-   - Scopes: Select **all available scopes** (to avoid permission issues)
-   - Expiration: Set to maximum allowed
-3. Copy token immediately
-4. Add to **Settings → CI/CD → Variables** as `GITLAB_TOKEN`
+## Details
 
-### Pipeline Schedule Setup
+### CI/CD Setup
 
-1. Go to **CI/CD → Schedules**
-2. Click **New schedule**
-3. Configure:
-   - Description: `Daily upstream sync and EPR deployment`
-   - Interval pattern: `0 9 * * *` (09:00 UTC daily)
-   - Cron timezone: UTC
-   - Target branch: `main`
-   - Activated: ✅
-4. Save schedule
+Required GitLab CI/CD variables (Settings → CI/CD → Variables):
 
-## Local Development
+- `GITLAB_TOKEN` - Personal Access Token with all scopes (for git push operations)
+- `SSH_KEY_EPR` - Private SSH key for EPR server access
+- `SSH_USER_EPR` - SSH username for EPR server
+- `SSH_HOST_EPR` - EPR server hostname/IP
 
-### Prerequisites
+**GitLab token creation:**
+- Settings → Access Tokens → New token
+- Scopes: All available
+- Expiration: Maximum allowed
+- Add as `GITLAB_TOKEN` variable with Protect + Mask flags
 
-- Docker
-- `elastic-package` CLI ([installation](https://github.com/elastic/elastic-package))
+**Pipeline schedule:**
+- CI/CD → Schedules → New schedule
+- Pattern: `0 9 * * *` (daily 09:00 UTC)
+- Target: `main` branch
 
-### Build Single Package
+### Local Development
 
+**Prerequisites:** Docker, `elastic-package` CLI ([install guide](https://github.com/elastic/elastic-package))
+
+**Build single package:**
 ```bash
-cd packages/azure
+cd packages/<package-name>
 elastic-package build
 ```
 
-### Build All Packages
-
+**Build all packages:**
 ```bash
 ./ci/build-all-packages.sh
 ```
 
-### Deploy to EPR Manually
+**Test package locally:**
+```bash
+cd packages/<package-name>
+elastic-package test pipeline
+elastic-package test static
+```
 
+**Deploy manually:**
 ```bash
 # After building packages
 rsync -avz build/packages/ $SSH_USER_EPR@$SSH_HOST_EPR:/opt/sva-soc-epr/packages/
 ```
+
+### Troubleshooting
+
+**Pipeline fails after merge:**
+- Check pipeline logs for merge conflicts
+- Resolve manually: `git fetch origin && git merge upstream/main`
+- Update `.gitattributes` if new files need "ours" strategy
+
+**Auto-fix script fails:**
+- Check `ci/remove-dynamic-flags.py` error output
+- Verify YAML structure in affected package manifests
+- Common issue: Malformed elasticsearch section
+
+**Flags remain after auto-fix:**
+- Pipeline will fail with specific error
+- Investigate affected package manually
+
+**Deploy pipeline skips packages:**
+- Check `ci/detect-and-deploy.py` logic
+- Verify git history shows package changes
+- May need to force rebuild specific package
+
+**EPR doesn't serve new packages:**
+- Verify rsync completed successfully
+- Check EPR container logs: `docker logs elastic-package-registry-soc`
+- Restart EPR manually if needed

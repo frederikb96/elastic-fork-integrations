@@ -20,7 +20,19 @@ merge:upstream:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0  # Full clone needed for merge
   before_script:
-    - apk add --no-cache git bash
+    # Install required tools
+    - |
+      apk add --no-cache git bash python3 py3-pip py3-virtualenv
+
+    # Create and activate Python venv, install dependencies
+    - |
+      echo "Creating Python virtual environment..."
+      python3 -m venv .venv
+      source .venv/bin/activate
+      echo "Installing Python dependencies into venv..."
+      pip install --no-cache-dir -r ci/requirements-merge.txt
+      echo "✓ Python dependencies installed in venv"
+
     # Configure git merge driver for "ours" strategy (keeps our files during conflicts)
     - git config merge.ours.driver true
     # This then applies the "ours" strategy to README.md specifically ONLY
@@ -59,7 +71,49 @@ merge:upstream:
         echo "Ensuring README.md stays ours..."
         git checkout HEAD -- README.md
 
-        # Commit the merge
+        # Check for dynamic_dataset/dynamic_namespace flags
+        echo ""
+        echo "================================================================"
+        echo "Checking for dynamic_dataset/dynamic_namespace flags..."
+        echo "================================================================"
+        if grep -r "dynamic_dataset.*true" packages/ || grep -r "dynamic_namespace.*true" packages/; then
+          echo ""
+          echo "⚠️  Dynamic flags detected - invoking auto-fix script..."
+
+          # Activate venv and run auto-fix script
+          source .venv/bin/activate
+          echo ""
+          if python3 ci/remove-dynamic-flags.py; then
+            echo ""
+            echo "✓ Auto-fix script completed successfully"
+
+            # Add modifications to staging
+            echo "Staging modified files..."
+            git add packages/ DYNAMIC_DATASET_MODIFICATIONS.md
+
+            # Validate cleanup - check if any flags remain
+            echo "Validating cleanup..."
+            if grep -r "dynamic_dataset.*true" packages/ || grep -r "dynamic_namespace.*true" packages/; then
+              echo ""
+              echo "❌ ERROR: Dynamic flags still present after cleanup!"
+              echo "   The script failed to remove all flags. Manual investigation required."
+              exit 1
+            else
+              echo "✅ All dynamic flags removed successfully"
+            fi
+          else
+            echo ""
+            echo "❌ ERROR: Auto-fix script failed!"
+            echo "   Check script output above for details."
+            exit 1
+          fi
+        else
+          echo "✓ No dynamic flags detected"
+        fi
+        echo "================================================================"
+        echo ""
+
+        # Commit the merge (now includes flag removals if any)
         if git commit -m "Auto-merge upstream Elastic integrations (${CI_PIPELINE_SOURCE})"; then
           echo "✓ Merge committed successfully"
 
@@ -120,7 +174,7 @@ deploy:packages:
       python3 -m venv .venv
       source .venv/bin/activate
       echo "Installing Python dependencies into venv..."
-      pip install --no-cache-dir -r ci/requirements.txt
+      pip install --no-cache-dir -r ci/requirements-deploy.txt
       echo "✓ Python dependencies installed in venv"
 
     # Install elastic-package CLI (latest version)

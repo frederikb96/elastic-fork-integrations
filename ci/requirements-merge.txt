@@ -1,0 +1,4 @@
+# Python dependencies for merge pipeline
+# Used by ci/remove-dynamic-flags.py
+
+ruamel.yaml>=0.17.0
