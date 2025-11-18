@@ -311,8 +311,9 @@ def commit_and_push() -> bool:
     # Commit using template
     print(f"\nCommitting changes on {FIX_BRANCH}...")
     if not COMMIT_MSG_TEMPLATE.exists():
-        print(f"❌ ERROR: Commit message template not found: {COMMIT_MSG_TEMPLATE}")
-        return False
+        raise FileNotFoundError(
+            f"Commit message template not found: {COMMIT_MSG_TEMPLATE}"
+        )
 
     result = run_command(["git", "commit", "-F", str(COMMIT_MSG_TEMPLATE)], check=False)
 
@@ -327,8 +328,7 @@ def commit_and_push() -> bool:
     result = run_command(["git", "push", "origin", FIX_BRANCH], check=False)
 
     if result.returncode != 0:
-        print(f"❌ ERROR: Failed to push to {FIX_BRANCH}")
-        return False
+        raise RuntimeError(f"Failed to push to {FIX_BRANCH}")
 
     print(f"✅ Successfully pushed changes to {FIX_BRANCH}")
     return True
@@ -428,17 +428,23 @@ def handle_flags_detected() -> int:
 
     print("✅ All dynamic flags removed successfully")
 
-    # Commit and push
-    if not commit_and_push():
-        return 1
+    # Commit and push (if there are changes)
+    pushed_new_changes = commit_and_push()
 
-    # Create MR if doesn't exist
+    # Create MR if doesn't exist (even if no new changes - branch may already have fixes)
     mr_web_url = None
     if not mr_exists:
+        print("")
+        print("Creating merge request for fix branch...")
         mr_web_url = create_mr()
     else:
         print("")
-        print("✓ Merge request already exists - new commit will appear automatically")
+        if pushed_new_changes:
+            print(
+                "✓ Merge request already exists - new commit will appear automatically"
+            )
+        else:
+            print("✓ Merge request already exists - branch is up to date")
         if existing_mr:
             mr_web_url = existing_mr.get("web_url")
 
