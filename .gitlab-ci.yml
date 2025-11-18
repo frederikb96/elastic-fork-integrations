@@ -2,49 +2,8 @@
 # Elastic Integrations SOC - Automated Merge and Deploy Pipeline
 
 stages:
-  - test
   - merge
   - deploy
-
-# ============================================================================
-# TEST: Echo CI variables for local .env file setup
-# ============================================================================
-test:ci-vars:
-  stage: test
-  image: alpine:latest
-  tags: ["docker"]
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
-    - when: never
-  script:
-    - |
-      echo "# GitLab CI Environment Variables"
-      echo "# Generated: $(date)"
-      echo "# Copy these to ci/.env.local for local testing"
-      echo ""
-      echo "# Git authentication (CRITICAL - needs write access to main branch)"
-      echo "export GITLAB_TOKEN=\"your-token-here\"  # Get from GitLab CI/CD variables"
-      echo ""
-      echo "# GitLab API authentication (for MR operations)"
-      echo "export CI_JOB_TOKEN=\"cannot-be-echoed\"  # Job token is secret, use GITLAB_TOKEN locally"
-      echo ""
-      echo "# GitLab server details"
-      echo "export CI_SERVER_HOST=\"${CI_SERVER_HOST}\""
-      echo "export CI_PROJECT_PATH=\"${CI_PROJECT_PATH}\""
-      echo ""
-      echo "# GitLab API endpoints"
-      echo "export CI_API_V4_URL=\"${CI_API_V4_URL}\""
-      echo "export CI_PROJECT_ID=\"${CI_PROJECT_ID}\""
-      echo "export CI_PROJECT_URL=\"${CI_PROJECT_URL}\""
-      echo ""
-      echo "# Pipeline metadata"
-      echo "export CI_PIPELINE_SOURCE=\"schedule\""
-      echo ""
-      echo "# Script configuration (optional overrides)"
-      echo "export FIX_BRANCH=\"auto-fix-dynamic-flags\""
-      echo "export MR_TARGET=\"main\""
-      echo "export API_TIMEOUT=\"30\""
 
 # ============================================================================
 # MERGE PIPELINE: Scheduled upstream sync
