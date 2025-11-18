@@ -15,10 +15,9 @@ Exit codes: 0 (success), 1 (failure), 2 (flags detected, MR created)
 import os
 import sys
 import subprocess
-import json
 import requests
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Dict
 
 # Add parent directory to path for importing remove_dynamic_flags
 sys.path.insert(0, str(Path(__file__).parent))
@@ -46,7 +45,9 @@ COMMIT_MSG_TEMPLATE = REPO_ROOT / "ci" / "templates" / "auto-fix-commit-message.
 MR_TEMPLATE = REPO_ROOT / "ci" / "templates" / "auto-fix-merge-request.md"
 
 
-def run_command(cmd: list, check: bool = True, capture_output: bool = False) -> subprocess.CompletedProcess:
+def run_command(
+    cmd: list, check: bool = True, capture_output: bool = False
+) -> subprocess.CompletedProcess:
     """Run shell command with error handling.
 
     Args:
@@ -62,11 +63,7 @@ def run_command(cmd: list, check: bool = True, capture_output: bool = False) -> 
     """
     print(f"→ Running: {' '.join(cmd)}")
     result = subprocess.run(
-        cmd,
-        check=check,
-        capture_output=capture_output,
-        text=True,
-        cwd=REPO_ROOT
+        cmd, check=check, capture_output=capture_output, text=True, cwd=REPO_ROOT
     )
     return result
 
@@ -99,7 +96,16 @@ def fetch_upstream() -> None:
     print("\nFetching upstream Elastic integrations...")
 
     # Add upstream remote (ignore if exists)
-    run_command(["git", "remote", "add", "upstream", "https://github.com/elastic/integrations.git"], check=False)
+    run_command(
+        [
+            "git",
+            "remote",
+            "add",
+            "upstream",
+            "https://github.com/elastic/integrations.git",
+        ],
+        check=False,
+    )
 
     # Fetch both remotes
     run_command(["git", "fetch", "upstream", "main"])
@@ -125,8 +131,7 @@ def merge_upstream() -> bool:
 
     # Perform merge with --no-commit to allow README.md checkout
     result = run_command(
-        ["git", "merge", "--no-commit", "--no-ff", "upstream/main"],
-        check=False
+        ["git", "merge", "--no-commit", "--no-ff", "upstream/main"], check=False
     )
 
     if result.returncode != 0:
@@ -158,7 +163,7 @@ def check_dynamic_flags() -> bool:
     result = run_command(
         ["grep", "-r", "dynamic_dataset.*true", "packages/"],
         check=False,
-        capture_output=True
+        capture_output=True,
     )
 
     if result.returncode == 0:
@@ -167,7 +172,7 @@ def check_dynamic_flags() -> bool:
     result = run_command(
         ["grep", "-r", "dynamic_namespace.*true", "packages/"],
         check=False,
-        capture_output=True
+        capture_output=True,
     )
 
     return result.returncode == 0
@@ -189,18 +194,20 @@ def get_existing_mr() -> Optional[Dict]:
     params = {
         "state": "opened",
         "source_branch": FIX_BRANCH,
-        "target_branch": MR_TARGET
+        "target_branch": MR_TARGET,
     }
     headers = {"JOB-TOKEN": CI_JOB_TOKEN}
 
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=API_TIMEOUT)
+        response = requests.get(
+            url, params=params, headers=headers, timeout=API_TIMEOUT
+        )
         response.raise_for_status()
         mrs = response.json()
 
         if mrs:
             mr = mrs[0]
-            print(f"✓ Merge request already exists - will update it with new changes")
+            print("✓ Merge request already exists - will update it with new changes")
             print(f"   MR: {mr.get('web_url', 'N/A')}")
             return mr
         else:
@@ -226,7 +233,7 @@ def manage_fix_branch(mr_exists: bool) -> None:
     result = run_command(
         ["git", "ls-remote", "--heads", "--exit-code", "origin", FIX_BRANCH],
         check=False,
-        capture_output=True
+        capture_output=True,
     )
 
     if result.returncode == 0:
@@ -237,13 +244,12 @@ def manage_fix_branch(mr_exists: bool) -> None:
         print(f"Checking if branch is merged into {MR_TARGET}...")
         merge_base_result = run_command(
             ["git", "merge-base", f"origin/{MR_TARGET}", f"origin/{FIX_BRANCH}"],
-            capture_output=True
+            capture_output=True,
         )
         merge_base = merge_base_result.stdout.strip()
 
         fix_head_result = run_command(
-            ["git", "rev-parse", f"origin/{FIX_BRANCH}"],
-            capture_output=True
+            ["git", "rev-parse", f"origin/{FIX_BRANCH}"], capture_output=True
         )
         fix_head = fix_head_result.stdout.strip()
 
@@ -280,16 +286,14 @@ def validate_cleanup() -> bool:
     print("\nValidating cleanup...")
 
     result = run_command(
-        ["grep", "-rq", "dynamic_dataset.*true", "packages/"],
-        check=False
+        ["grep", "-rq", "dynamic_dataset.*true", "packages/"], check=False
     )
 
     if result.returncode == 0:
         return False
 
     result = run_command(
-        ["grep", "-rq", "dynamic_namespace.*true", "packages/"],
-        check=False
+        ["grep", "-rq", "dynamic_namespace.*true", "packages/"], check=False
     )
 
     return result.returncode != 0
@@ -311,10 +315,7 @@ def commit_and_push() -> bool:
         print(f"❌ ERROR: Commit message template not found: {COMMIT_MSG_TEMPLATE}")
         return False
 
-    result = run_command(
-        ["git", "commit", "-F", str(COMMIT_MSG_TEMPLATE)],
-        check=False
-    )
+    result = run_command(["git", "commit", "-F", str(COMMIT_MSG_TEMPLATE)], check=False)
 
     if result.returncode != 0:
         print("✓ No changes to commit (already up to date)")
@@ -356,15 +357,12 @@ def create_mr() -> Optional[str]:
 
     # Create MR via API
     url = f"{CI_API_V4_URL}/projects/{CI_PROJECT_ID}/merge_requests"
-    headers = {
-        "JOB-TOKEN": CI_JOB_TOKEN,
-        "Content-Type": "application/json"
-    }
+    headers = {"JOB-TOKEN": CI_JOB_TOKEN, "Content-Type": "application/json"}
     data = {
         "source_branch": FIX_BRANCH,
         "target_branch": MR_TARGET,
         "title": "⚠️  Auto-fix: Remove dynamic_dataset flags from upstream merge",
-        "description": mr_description
+        "description": mr_description,
     }
 
     try:
@@ -424,7 +422,9 @@ def handle_flags_detected() -> int:
     if not validate_cleanup():
         print("")
         print("❌ ERROR: Dynamic flags still present after cleanup!")
-        print("   The script failed to remove all flags. Manual investigation required.")
+        print(
+            "   The script failed to remove all flags. Manual investigation required."
+        )
         return 1
 
     print("✅ All dynamic flags removed successfully")
@@ -478,8 +478,13 @@ def handle_no_flags() -> int:
     # Commit the merge
     print("Committing merge...")
     result = run_command(
-        ["git", "commit", "-m", f"Auto-merge upstream Elastic integrations ({CI_PIPELINE_SOURCE})"],
-        check=False
+        [
+            "git",
+            "commit",
+            "-m",
+            f"Auto-merge upstream Elastic integrations ({CI_PIPELINE_SOURCE})",
+        ],
+        check=False,
     )
 
     if result.returncode != 0:
@@ -525,7 +530,9 @@ def main() -> int:
         # Merge upstream
         if not merge_upstream():
             print("")
-            print("Please resolve conflicts manually and update .gitattributes if needed.")
+            print(
+                "Please resolve conflicts manually and update .gitattributes if needed."
+            )
             return 1
 
         # Check for dynamic flags
@@ -539,6 +546,7 @@ def main() -> int:
     except Exception as e:
         print(f"\n❌ FATAL ERROR: {e}", file=sys.stderr)
         import traceback
+
         traceback.print_exc()
         return 1
 

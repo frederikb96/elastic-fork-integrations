@@ -1,0 +1,7 @@
+# Development tools for linting and type checking
+# Usage: pip install -r ci/requirements-dev.txt
+
+ruff>=0.1.0
+mypy>=1.7.0
+types-requests>=2.31.0
+types-PyYAML>=6.0.0

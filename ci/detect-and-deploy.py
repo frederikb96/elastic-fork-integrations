@@ -16,13 +16,14 @@ import sys
 import subprocess
 import yaml
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Dict, List
 from dataclasses import dataclass
 
 
 @dataclass
 class PackageInfo:
     """Metadata for an integration package."""
+
     dir_path: Path
     name: str
     version: str
@@ -33,6 +34,7 @@ class PackageInfo:
 
 class DeploymentError(Exception):
     """Raised when deployment fails."""
+
     pass
 
 
@@ -41,9 +43,9 @@ class DeploymentManager:
 
     def __init__(self):
         # Get environment variables
-        self.ssh_host = os.getenv('SSH_HOST_EPR')
-        self.ssh_user = os.getenv('SSH_USER_EPR')
-        self.deploy_path = os.getenv('EPR_DEPLOY_PATH')
+        self.ssh_host = os.getenv("SSH_HOST_EPR")
+        self.ssh_user = os.getenv("SSH_USER_EPR")
+        self.deploy_path = os.getenv("EPR_DEPLOY_PATH")
 
         if not all([self.ssh_host, self.ssh_user, self.deploy_path]):
             raise DeploymentError(
@@ -55,19 +57,18 @@ class DeploymentManager:
         self.packages_dir = self.repo_root / "packages"
         self.build_dir = self.repo_root / "build" / "packages"
 
-    def print_header(self, step: str, total: int, title: str):
+    def print_header(self, step: str, total: str, title: str):
         """Print formatted step header."""
         print(f"\n[{step}/{total}] {title}...")
         print()
 
-    def run_ssh(self, command: str, capture_output: bool = True) -> subprocess.CompletedProcess:
+    def run_ssh(
+        self, command: str, capture_output: bool = True
+    ) -> subprocess.CompletedProcess:
         """Run SSH command on EPR server."""
         cmd = ["ssh", "-o", "ConnectTimeout=10", "epr-server", command]
         result = subprocess.run(
-            cmd,
-            capture_output=capture_output,
-            text=True,
-            check=False
+            cmd, capture_output=capture_output, text=True, check=False
         )
         return result
 
@@ -93,7 +94,9 @@ class DeploymentManager:
 
     def step1_validate_local_packages(self) -> Dict[Path, PackageInfo]:
         """Validate all local package manifests and extract metadata."""
-        self.print_header("1", "6", "Validating main branch packages and extracting metadata")
+        self.print_header(
+            "1", "6", "Validating main branch packages and extracting metadata"
+        )
 
         manifests = list(self.packages_dir.glob("*/manifest.yml"))
 
@@ -108,16 +111,14 @@ class DeploymentManager:
 
             # Parse manifest with PyYAML
             try:
-                with open(manifest_path, 'r') as f:
+                with open(manifest_path, "r") as f:
                     manifest_data = yaml.safe_load(f)
             except Exception as e:
-                raise DeploymentError(
-                    f"Failed to parse {manifest_path}: {e}"
-                )
+                raise DeploymentError(f"Failed to parse {manifest_path}: {e}")
 
             # Validate required fields
-            pkg_name = manifest_data.get('name')
-            pkg_version = manifest_data.get('version')
+            pkg_name = manifest_data.get("name")
+            pkg_version = manifest_data.get("version")
 
             if not pkg_name:
                 raise DeploymentError(
@@ -133,9 +134,7 @@ class DeploymentManager:
             pkg_version = str(pkg_version)
 
             packages[pkg_dir] = PackageInfo(
-                dir_path=pkg_dir,
-                name=pkg_name,
-                version=pkg_version
+                dir_path=pkg_dir, name=pkg_name, version=pkg_version
             )
 
             processed += 1
@@ -145,7 +144,9 @@ class DeploymentManager:
         print(f"\n✓ Validated {len(packages)} packages from main branch")
         return packages
 
-    def step2_check_deployment_status(self, packages: Dict[Path, PackageInfo]) -> List[PackageInfo]:
+    def step2_check_deployment_status(
+        self, packages: Dict[Path, PackageInfo]
+    ) -> List[PackageInfo]:
         """Check deployment status on EPR server and find changed packages."""
         self.print_header("2", "6", "Checking deployment status on EPR server")
 
@@ -172,9 +173,7 @@ echo "===ZIPS_END==="
         result = self.run_ssh(fetch_script)
 
         if result.returncode != 0:
-            raise DeploymentError(
-                f"Failed to fetch deployment data: {result.stderr}"
-            )
+            raise DeploymentError(f"Failed to fetch deployment data: {result.stderr}")
 
         print("✓ Fetched deployment data from EPR server")
         print()
@@ -186,27 +185,27 @@ echo "===ZIPS_END==="
         output = result.stdout
 
         # Extract manifest section
-        if '===MANIFEST_START===' in output:
-            manifest_blocks = output.split('===MANIFEST_START===')[1:]
+        if "===MANIFEST_START===" in output:
+            manifest_blocks = output.split("===MANIFEST_START===")[1:]
 
             for block in manifest_blocks:
-                if '===MANIFEST_END===' not in block:
+                if "===MANIFEST_END===" not in block:
                     continue
 
                 # Split header and content
-                parts = block.split('\n', 1)
+                parts = block.split("\n", 1)
                 if len(parts) < 2:
                     continue
 
                 manifest_path = parts[0].strip()
-                yaml_content = parts[1].split('===MANIFEST_END===')[0]
+                yaml_content = parts[1].split("===MANIFEST_END===")[0]
 
                 # Parse YAML with PyYAML (handles all quote types automatically)
                 try:
                     manifest_data = yaml.safe_load(yaml_content)
                     if manifest_data:
-                        name = manifest_data.get('name')
-                        version = str(manifest_data.get('version', ''))
+                        name = manifest_data.get("name")
+                        version = str(manifest_data.get("version", ""))
 
                         if name and version:
                             deployed_manifests[(name, version)] = manifest_path
@@ -215,9 +214,15 @@ echo "===ZIPS_END==="
                     continue
 
         # Extract zip list
-        if '===ZIPS_START===' in output:
-            zips_section = output.split('===ZIPS_START===')[1].split('===ZIPS_END===')[0]
-            deployed_zips = set(line.strip() for line in zips_section.strip().split('\n') if line.strip())
+        if "===ZIPS_START===" in output:
+            zips_section = output.split("===ZIPS_START===")[1].split("===ZIPS_END===")[
+                0
+            ]
+            deployed_zips = set(
+                line.strip()
+                for line in zips_section.strip().split("\n")
+                if line.strip()
+            )
 
         print("Deployed packages found:")
         print(f"  Manifests: {len(deployed_manifests)}")
@@ -269,7 +274,7 @@ echo "===ZIPS_END==="
             result = subprocess.run(
                 ["elastic-package", "build", "-C", str(pkg_info.dir_path)],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -281,7 +286,7 @@ echo "===ZIPS_END==="
                 print()
                 print("  Error output:")
                 # Show last 20 lines of stderr
-                error_lines = result.stderr.strip().split('\n')
+                error_lines = result.stderr.strip().split("\n")
                 for line in error_lines[-20:]:
                     print(f"    {line}")
                 print()
@@ -307,14 +312,22 @@ echo "===ZIPS_END==="
 
         print(f"Syncing packages to epr-server:{self.deploy_path}...")
 
-        result = subprocess.run([
-            "rsync", "-rh", "--stats",
-            "--chmod=D777,F666",
-            "--no-perms", "--no-times",
-            "--no-owner", "--no-group",
-            f"{self.build_dir}/",
-            f"epr-server:{self.deploy_path}/"
-        ], capture_output=True, text=True)
+        result = subprocess.run(
+            [
+                "rsync",
+                "-rh",
+                "--stats",
+                "--chmod=D777,F666",
+                "--no-perms",
+                "--no-times",
+                "--no-owner",
+                "--no-group",
+                f"{self.build_dir}/",
+                f"epr-server:{self.deploy_path}/",
+            ],
+            capture_output=True,
+            text=True,
+        )
 
         if result.returncode != 0:
             print()
@@ -333,7 +346,7 @@ echo "===ZIPS_END==="
 
         # Fetch raw manifest content for all built packages in ONE SSH call
         # Build package list for validation
-        pkg_paths = ' '.join(f"{p.name}:{p.version}" for p in built)
+        pkg_paths = " ".join(f"{p.name}:{p.version}" for p in built)
 
         validate_script = f"""
 cd {self.deploy_path} || exit 1
@@ -365,9 +378,7 @@ done
         result = self.run_ssh(validate_script)
 
         if result.returncode != 0:
-            raise DeploymentError(
-                f"Validation command failed: {result.stderr}"
-            )
+            raise DeploymentError(f"Validation command failed: {result.stderr}")
 
         # Parse output with PyYAML (no text processing!)
         output = result.stdout
@@ -391,19 +402,28 @@ done
                 # Extract and parse YAML content
                 start_marker = f"===MANIFEST_START=== {key}"
                 if start_marker in output:
-                    yaml_block = output.split(start_marker)[1].split('===MANIFEST_END===')[0]
+                    yaml_block = output.split(start_marker)[1].split(
+                        "===MANIFEST_END==="
+                    )[0]
 
                     try:
                         manifest_data = yaml.safe_load(yaml_block)
                         if manifest_data:
-                            deployed_name = manifest_data.get('name')
-                            deployed_version = str(manifest_data.get('version', ''))
+                            deployed_name = manifest_data.get("name")
+                            deployed_version = str(manifest_data.get("version", ""))
 
-                            if deployed_name == pkg_info.name and deployed_version == pkg_info.version:
+                            if (
+                                deployed_name == pkg_info.name
+                                and deployed_version == pkg_info.version
+                            ):
                                 manifest_validated[pkg_info.name] = True
                             else:
-                                print(f"    ✗ Manifest mismatch: name={deployed_name}, version={deployed_version}")
-                                validation_failed.append(f"{pkg_info.name}: manifest mismatch")
+                                print(
+                                    f"    ✗ Manifest mismatch: name={deployed_name}, version={deployed_version}"
+                                )
+                                validation_failed.append(
+                                    f"{pkg_info.name}: manifest mismatch"
+                                )
                                 manifest_validated[pkg_info.name] = False
                         else:
                             print("    ✗ Manifest empty")
@@ -411,7 +431,9 @@ done
                             manifest_validated[pkg_info.name] = False
                     except yaml.YAMLError as e:
                         print(f"    ✗ Manifest parse error: {e}")
-                        validation_failed.append(f"{pkg_info.name}: manifest parse error")
+                        validation_failed.append(
+                            f"{pkg_info.name}: manifest parse error"
+                        )
                         manifest_validated[pkg_info.name] = False
             else:
                 print("    ✗ Manifest check failed (unknown status)")
@@ -431,13 +453,17 @@ done
                 zip_validated[pkg_info.name] = False
 
             # Print result
-            if manifest_validated.get(pkg_info.name) and zip_validated.get(pkg_info.name):
+            if manifest_validated.get(pkg_info.name) and zip_validated.get(
+                pkg_info.name
+            ):
                 print("    ✓ Validated successfully")
 
         print()
 
         if validation_failed:
-            print(f"❌ Post-deployment validation FAILED for {len(validation_failed)} packages:")
+            print(
+                f"❌ Post-deployment validation FAILED for {len(validation_failed)} packages:"
+            )
             for failure in validation_failed:
                 print(f"  - {failure}")
             print()
@@ -450,8 +476,7 @@ done
         self.print_header("6", "6", "Restarting EPR container to load new packages")
 
         result = self.run_ssh(
-            f"cd {self.deploy_path} && sudo docker restart epr",
-            capture_output=True
+            f"cd {self.deploy_path} && sudo docker restart epr", capture_output=True
         )
 
         if result.returncode != 0:
@@ -510,6 +535,7 @@ done
         except Exception as e:
             print(f"\n❌ Unexpected error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc()
             return 1
 
@@ -520,5 +546,5 @@ def main():
     sys.exit(manager.run())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

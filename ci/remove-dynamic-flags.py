@@ -16,7 +16,7 @@ from pathlib import Path
 from ruamel.yaml import YAML
 import re
 import sys
-from typing import Dict, Set, Optional
+from typing import Dict, Optional
 
 
 # Constants
@@ -51,22 +51,24 @@ class IntegrationProcessor:
                 continue
 
             try:
-                with open(manifest_path, 'r') as f:
+                with open(manifest_path, "r") as f:
                     data = self.yaml.load(f)
 
                 # Check for elasticsearch section with dynamic flags
-                if 'elasticsearch' in data:
-                    es_section = data['elasticsearch']
+                if "elasticsearch" in data:
+                    es_section = data["elasticsearch"]
                     has_flags = (
-                        es_section.get('dynamic_dataset') is True or
-                        es_section.get('dynamic_namespace') is True
+                        es_section.get("dynamic_dataset") is True
+                        or es_section.get("dynamic_namespace") is True
                     )
                     self.affected_data_streams[ds_path.name] = has_flags
                 else:
                     self.affected_data_streams[ds_path.name] = False
 
             except Exception as e:
-                print(f"❌ ERROR: Failed to parse {manifest_path}: {e}", file=sys.stderr)
+                print(
+                    f"❌ ERROR: Failed to parse {manifest_path}: {e}", file=sys.stderr
+                )
                 sys.exit(1)
 
         return any(self.affected_data_streams.values())
@@ -90,12 +92,12 @@ class IntegrationProcessor:
 
         try:
             # Read file as lines
-            with open(pkg_manifest, 'r') as f:
+            with open(pkg_manifest, "r") as f:
                 lines = f.readlines()
 
             # Find and parse title for integration_title
             for line in lines:
-                match = re.match(r'^(\s*)title:\s*(.*)$', line)
+                match = re.match(r"^(\s*)title:\s*(.*)$", line)
                 if match:
                     value = match.group(2).strip()
                     # Parse value (handle quotes)
@@ -113,13 +115,13 @@ class IntegrationProcessor:
 
             # Check if already has prefix
             if self.integration_title.startswith(PREFIX):
-                print(f"    ✓ Package title already marked")
+                print("    ✓ Package title already marked")
                 return
 
             # Find title line and modify it
             modified = False
             for i, line in enumerate(lines):
-                match = re.match(r'^(\s*)title:\s*(.*)$', line)
+                match = re.match(r"^(\s*)title:\s*(.*)$", line)
                 if match:
                     indent = match.group(1)
                     value = match.group(2).strip()
@@ -139,12 +141,15 @@ class IntegrationProcessor:
                     break
 
             if modified:
-                with open(pkg_manifest, 'w') as f:
+                with open(pkg_manifest, "w") as f:
                     f.writelines(lines)
-                print(f"    ✓ Updated package title")
+                print("    ✓ Updated package title")
 
         except Exception as e:
-            print(f"❌ ERROR: Failed to update package title in {pkg_manifest}: {e}", file=sys.stderr)
+            print(
+                f"❌ ERROR: Failed to update package title in {pkg_manifest}: {e}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     def _remove_flags_from_datastream(self, ds_name: str) -> None:
@@ -153,14 +158,14 @@ class IntegrationProcessor:
 
         try:
             # Read file as lines
-            with open(ds_manifest, 'r') as f:
+            with open(ds_manifest, "r") as f:
                 lines = f.readlines()
 
             # Find elasticsearch section
             es_line_idx = None
             es_indent = None
             for i, line in enumerate(lines):
-                match = re.match(r'^(\s*)elasticsearch:\s*$', line)
+                match = re.match(r"^(\s*)elasticsearch:\s*$", line)
                 if match:
                     es_line_idx = i
                     es_indent = len(match.group(1))
@@ -177,7 +182,7 @@ class IntegrationProcessor:
 
             while end_idx < len(lines):
                 line = lines[end_idx]
-                if line.strip() == '':
+                if line.strip() == "":
                     end_idx += 1
                     continue
 
@@ -189,7 +194,9 @@ class IntegrationProcessor:
                     break  # End of elasticsearch section
 
                 # Check if this is a dynamic flag line
-                if stripped.startswith('dynamic_dataset:') or stripped.startswith('dynamic_namespace:'):
+                if stripped.startswith("dynamic_dataset:") or stripped.startswith(
+                    "dynamic_namespace:"
+                ):
                     lines_to_remove.append(end_idx)
                 else:
                     has_other_settings = True
@@ -206,13 +213,16 @@ class IntegrationProcessor:
                 if not has_other_settings:
                     del lines[es_line_idx]
 
-                with open(ds_manifest, 'w') as f:
+                with open(ds_manifest, "w") as f:
                     f.writelines(lines)
 
                 print(f"    ✓ Removed flags from {ds_name}")
 
         except Exception as e:
-            print(f"❌ ERROR: Failed to remove flags from {ds_manifest}: {e}", file=sys.stderr)
+            print(
+                f"❌ ERROR: Failed to remove flags from {ds_manifest}: {e}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     def _update_datastream_title(self, ds_name: str) -> None:
@@ -221,13 +231,13 @@ class IntegrationProcessor:
 
         try:
             # Read file as lines
-            with open(ds_manifest, 'r') as f:
+            with open(ds_manifest, "r") as f:
                 lines = f.readlines()
 
             # Find title line
             title_found = False
             for i, line in enumerate(lines):
-                match = re.match(r'^(\s*)title:\s*(.*)$', line)
+                match = re.match(r"^(\s*)title:\s*(.*)$", line)
                 if match:
                     title_found = True
                     indent = match.group(1)
@@ -248,30 +258,34 @@ class IntegrationProcessor:
                     else:
                         lines[i] = f'{indent}title: "{PREFIX}{value}"\n'
 
-                    with open(ds_manifest, 'w') as f:
+                    with open(ds_manifest, "w") as f:
                         f.writelines(lines)
                     print(f"    ✓ Updated {ds_name} title")
                     return
 
             if not title_found:
-                print(f"⚠️  WARNING: No 'title' field in {ds_manifest}, skipping title update")
+                print(
+                    f"⚠️  WARNING: No 'title' field in {ds_manifest}, skipping title update"
+                )
 
         except Exception as e:
-            print(f"❌ ERROR: Failed to update data stream title in {ds_manifest}: {e}", file=sys.stderr)
+            print(
+                f"❌ ERROR: Failed to update data stream title in {ds_manifest}: {e}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     def get_data(self) -> Dict:
         """Return data for overview file with emoji indicators."""
         return {
-            'title': self.integration_title.replace(PREFIX, '') if self.integration_title else "",
-            'comment': "",
-            'data_streams': {
-                ds_name: {
-                    'namespaced': '✅' if not is_affected else '⚠️',
-                    'comment': ""
-                }
+            "title": self.integration_title.replace(PREFIX, "")
+            if self.integration_title
+            else "",
+            "comment": "",
+            "data_streams": {
+                ds_name: {"namespaced": "✅" if not is_affected else "⚠️", "comment": ""}
                 for ds_name, is_affected in self.affected_data_streams.items()
-            }
+            },
         }
 
 
@@ -286,20 +300,26 @@ class OverviewManager:
     def load(self) -> None:
         """Load existing overview file."""
         if not self.overview_file.exists():
-            print(f"❌ ERROR: Overview file does not exist: {self.overview_file}", file=sys.stderr)
-            print(f"   Create it manually first with proper structure.", file=sys.stderr)
+            print(
+                f"❌ ERROR: Overview file does not exist: {self.overview_file}",
+                file=sys.stderr,
+            )
+            print("   Create it manually first with proper structure.", file=sys.stderr)
             sys.exit(1)
 
         content = self.overview_file.read_text()
 
         # Extract YAML section between markers
         # Looking for: <!-- AUTO-GENERATED... --> ... ```yaml\n <content> \n```
-        pattern = r'```yaml\n(.*?)\n```'
+        pattern = r"```yaml\n(.*?)\n```"
         match = re.search(pattern, content, re.DOTALL)
 
         if not match:
-            print(f"❌ ERROR: Could not find YAML section in {self.overview_file}", file=sys.stderr)
-            print(f"   Expected format: ```yaml\\n<content>\\n```", file=sys.stderr)
+            print(
+                f"❌ ERROR: Could not find YAML section in {self.overview_file}",
+                file=sys.stderr,
+            )
+            print("   Expected format: ```yaml\\n<content>\\n```", file=sys.stderr)
             sys.exit(1)
 
         yaml_content = match.group(1)
@@ -307,41 +327,49 @@ class OverviewManager:
         try:
             self.data = self.yaml.load(yaml_content)
             if not self.data:
-                self.data = {'integrations': {}}
-            if 'integrations' not in self.data:
-                self.data['integrations'] = {}
+                self.data = {"integrations": {}}
+            if "integrations" not in self.data:
+                self.data["integrations"] = {}
         except Exception as e:
-            print(f"❌ ERROR: Failed to parse YAML in {self.overview_file}: {e}", file=sys.stderr)
+            print(
+                f"❌ ERROR: Failed to parse YAML in {self.overview_file}: {e}",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
     def merge(self, new_integrations: Dict) -> None:
         """Merge new integration data, preserving existing comments."""
         for pkg_name, new_data in new_integrations.items():
-            if pkg_name in self.data['integrations']:
+            if pkg_name in self.data["integrations"]:
                 # Update existing entry, preserve comments
-                existing = self.data['integrations'][pkg_name]
+                existing = self.data["integrations"][pkg_name]
 
                 # Update title
-                existing['title'] = new_data['title']
+                existing["title"] = new_data["title"]
 
                 # Preserve integration-level comment
-                if 'comment' in existing:
-                    new_data['comment'] = existing['comment']
+                if "comment" in existing:
+                    new_data["comment"] = existing["comment"]
 
                 # Merge data streams, preserving DS-level comments
-                for ds_name, ds_data in new_data['data_streams'].items():
-                    if 'data_streams' in existing and ds_name in existing['data_streams']:
+                for ds_name, ds_data in new_data["data_streams"].items():
+                    if (
+                        "data_streams" in existing
+                        and ds_name in existing["data_streams"]
+                    ):
                         # Preserve DS comment
-                        if 'comment' in existing['data_streams'][ds_name]:
-                            ds_data['comment'] = existing['data_streams'][ds_name]['comment']
+                        if "comment" in existing["data_streams"][ds_name]:
+                            ds_data["comment"] = existing["data_streams"][ds_name][
+                                "comment"
+                            ]
 
                     # Update/add DS entry
-                    if 'data_streams' not in existing:
-                        existing['data_streams'] = {}
-                    existing['data_streams'][ds_name] = ds_data
+                    if "data_streams" not in existing:
+                        existing["data_streams"] = {}
+                    existing["data_streams"][ds_name] = ds_data
             else:
                 # New integration entry
-                self.data['integrations'][pkg_name] = new_data
+                self.data["integrations"][pkg_name] = new_data
 
     def save(self) -> None:
         """Write updated YAML back to overview file."""
@@ -349,13 +377,14 @@ class OverviewManager:
 
         # Dump YAML to string
         from io import StringIO
+
         stream = StringIO()
         self.yaml.dump(self.data, stream)
         yaml_str = stream.getvalue()
 
         # Replace YAML section between ```yaml and ```
-        pattern = r'(```yaml\n).*?(\n```)'
-        replacement = r'\1' + yaml_str.rstrip() + r'\2'
+        pattern = r"(```yaml\n).*?(\n```)"
+        replacement = r"\1" + yaml_str.rstrip() + r"\2"
 
         new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
 
@@ -363,7 +392,9 @@ class OverviewManager:
             self.overview_file.write_text(new_content)
             print(f"  ✓ Updated {self.overview_file.name}")
         except Exception as e:
-            print(f"❌ ERROR: Failed to write {self.overview_file}: {e}", file=sys.stderr)
+            print(
+                f"❌ ERROR: Failed to write {self.overview_file}: {e}", file=sys.stderr
+            )
             sys.exit(1)
 
 
@@ -384,7 +415,9 @@ def main() -> int:
 
     # Check packages directory exists
     if not PACKAGES_DIR.exists():
-        print(f"❌ ERROR: Packages directory not found: {PACKAGES_DIR}", file=sys.stderr)
+        print(
+            f"❌ ERROR: Packages directory not found: {PACKAGES_DIR}", file=sys.stderr
+        )
         return 1
 
     # Scan all integrations
@@ -402,16 +435,18 @@ def main() -> int:
 
     # Update overview file
     if affected_integrations:
-        print(f"\n📝 Updating overview file...")
+        print("\n📝 Updating overview file...")
         overview = OverviewManager(OVERVIEW_FILE, yaml)
         overview.load()
         overview.merge(affected_integrations)
         overview.save()
 
         print(f"\n✅ Successfully processed {len(affected_integrations)} integrations")
-        print(f"   Modified packages: {', '.join(sorted(affected_integrations.keys()))}")
+        print(
+            f"   Modified packages: {', '.join(sorted(affected_integrations.keys()))}"
+        )
     else:
-        print(f"\n✓ No integrations with dynamic flags found")
+        print("\n✓ No integrations with dynamic flags found")
 
     print("=" * 70)
     return 0
