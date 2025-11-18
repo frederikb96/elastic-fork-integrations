@@ -1,4 +1,4 @@
-title: Custom Kafka Logs
+title: "(⚠️ SVA RESTRICTED) Custom Kafka Logs"
 type: logs
 streams:
   - input: kafka
@@ -269,6 +269,3 @@ streams:
         multi: true
         show_user: true
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

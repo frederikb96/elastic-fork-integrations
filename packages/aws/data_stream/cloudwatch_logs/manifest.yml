@@ -1,4 +1,4 @@
-title: AWS CloudWatch logs
+title: "(⚠️ SVA RESTRICTED) AWS CloudWatch logs"
 type: logs
 streams:
   - input: aws-cloudwatch
@@ -139,6 +139,3 @@ streams:
           Note: In case you change the dataset name, the default mappings and ingest templates will not be applied to the new dataset. Advise [Datastreams Pipelines](https://www.elastic.co/guide/en/fleet/current/data-streams-pipeline-tutorial.html) for new pipeline creation or [Index Template creation](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-put-template.html)
           
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

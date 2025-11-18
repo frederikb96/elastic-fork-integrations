@@ -1,4 +1,4 @@
-title: Alerts V2 and Events V2
+title: "(⚠️ SVA RESTRICTED) Alerts V2 and Events V2"
 type: logs
 dataset: netskope.alerts_events_v2
 streams:
@@ -397,6 +397,3 @@ streams:
         type: bool
         multi: false
         default: false
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

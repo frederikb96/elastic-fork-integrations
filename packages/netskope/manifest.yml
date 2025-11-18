@@ -1,6 +1,6 @@
 format_version: "3.0.3"
 name: netskope
-title: "Netskope"
+title: "(⚠️ SVA RESTRICTED) Netskope"
 version: "3.0.0"
 description: Collect logs from Netskope with Elastic Agent.
 type: integration

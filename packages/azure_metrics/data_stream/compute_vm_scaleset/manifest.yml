@@ -1,5 +1,5 @@
 type: metrics
-title: Compute VM Scaleset
+title: "(⚠️ SVA RESTRICTED) Compute VM Scaleset"
 dataset: azure.compute_vm_scaleset
 streams:
   - input: azure/metrics
@@ -29,5 +29,3 @@ streams:
 elasticsearch:
   index_mode: "time_series"
   # Ensures agents have permissions to write data to `metrics-*-*`
-  dynamic_dataset: true
-  dynamic_namespace: true

@@ -1,5 +1,5 @@
 type: metrics
-title: Container Instance
+title: "(⚠️ SVA RESTRICTED) Container Instance"
 dataset: azure.container_instance
 streams:
   - input: azure/metrics
@@ -29,5 +29,3 @@ streams:
 elasticsearch:
   index_mode: "time_series"
   # Ensures agents have permissions to write data to `metrics-*-*`
-  dynamic_dataset: true
-  dynamic_namespace: true

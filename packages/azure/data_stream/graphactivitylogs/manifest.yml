@@ -1,5 +1,5 @@
 type: logs
-title: Microsoft Graph Activity Logs
+title: "(⚠️ SVA RESTRICTED) Microsoft Graph Activity Logs"
 streams:
   - input: "azure-eventhub"
     enabled: false
@@ -57,6 +57,3 @@ streams:
         multi: false
         default: false
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

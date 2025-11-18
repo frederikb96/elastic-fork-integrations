@@ -1,5 +1,5 @@
 type: metrics
-title: Storage Account
+title: "(⚠️ SVA RESTRICTED) Storage Account"
 dataset: azure.storage_account
 streams:
   - input: azure/metrics
@@ -43,5 +43,3 @@ streams:
 elasticsearch:
   index_mode: "time_series"
   # Ensures agents have permissions to write data to `metrics-*-*`
-  dynamic_dataset: true
-  dynamic_namespace: true

@@ -1,4 +1,4 @@
-title: Custom logs from AWS
+title: "(⚠️ SVA RESTRICTED) Custom logs from AWS"
 type: logs
 streams:
   - input: aws-cloudwatch
@@ -423,6 +423,3 @@ streams:
         type: yaml
         default: ""
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

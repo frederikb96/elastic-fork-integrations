@@ -1,10 +1,8 @@
-title: Prometheus query metrics
+title: "(⚠️ SVA RESTRICTED) Prometheus query metrics"
 type: metrics
 elasticsearch:
   index_mode: "time_series"
   # Ensures agents have permissions to write data to `metrics-*-*`
-  dynamic_dataset: true
-  dynamic_namespace: true
 streams:
   - input: prometheus/metrics
     vars:

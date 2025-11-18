@@ -1,4 +1,4 @@
-title: Collect Network rule logs from Azure Firewall
+title: "(⚠️ SVA RESTRICTED) Collect Network rule logs from Azure Firewall"
 type: logs
 streams:
   - input: "azure-eventhub"
@@ -58,6 +58,3 @@ streams:
         multi: false
         default: false
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

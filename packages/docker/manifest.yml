@@ -1,5 +1,5 @@
 name: docker
-title: Docker
+title: "(⚠️ SVA RESTRICTED) Docker"
 version: 2.14.0
 description: Collect metrics and logs from Docker instances with Elastic Agent.
 type: integration

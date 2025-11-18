@@ -1,4 +1,4 @@
-title: "Route logs to Elastic integrations."
+title: "(⚠️ SVA RESTRICTED) Route logs to Elastic integrations."
 type: logs
 dataset: syslog_router.log
 streams:
@@ -892,6 +892,3 @@ streams:
               - syslog:
                   field: message
                   format: rfc5424
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

@@ -1,5 +1,5 @@
 name: azure
-title: Azure Logs
+title: "(⚠️ SVA RESTRICTED) Azure Logs"
 version: "1.29.1"
 description: This Elastic integration collects logs from Azure
 type: integration

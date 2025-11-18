@@ -1,5 +1,5 @@
 type: metrics
-title: Collect OpenAI metrics
+title: "(⚠️ SVA RESTRICTED) Collect OpenAI metrics"
 dataset: azure.open_ai
 streams:
   - input: azure/metrics
@@ -67,5 +67,3 @@ streams:
     description: Collect openAI metrics
 elasticsearch:
   # Ensures agents have permissions to write data to `metrics-*-*`
-  dynamic_dataset: true
-  dynamic_namespace: true

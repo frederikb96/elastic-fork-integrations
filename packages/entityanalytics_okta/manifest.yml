@@ -1,6 +1,6 @@
 format_version: "3.0.2"
 name: entityanalytics_okta
-title: Okta Entity Analytics
+title: "(⚠️ SVA RESTRICTED) Okta Entity Analytics"
 version: "2.5.1"
 description: "Collect Identities from Okta with Elastic Agent."
 type: integration

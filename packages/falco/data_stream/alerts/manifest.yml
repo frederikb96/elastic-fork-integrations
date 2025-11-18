@@ -1,9 +1,6 @@
-title: "Falco Alerts"
+title: "(⚠️ SVA RESTRICTED) Falco Alerts"
 type: logs
 dataset: falco.alerts
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
 streams:
   - input: tcp
     enabled: false

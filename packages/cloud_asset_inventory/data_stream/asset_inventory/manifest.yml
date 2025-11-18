@@ -1,9 +1,8 @@
-title: Cloud Assets Discovery
+title: "(⚠️ SVA RESTRICTED) Cloud Assets Discovery"
 type: logs
 dataset: cloud_asset_inventory.asset_inventory
 dataset_is_prefix: false
 elasticsearch:
-  dynamic_dataset: true
   index_template:
     mappings:
       dynamic: false

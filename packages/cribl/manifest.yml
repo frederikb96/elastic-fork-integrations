@@ -1,6 +1,6 @@
 format_version: 3.0.3
 name: cribl
-title: "Cribl"
+title: "(⚠️ SVA RESTRICTED) Cribl"
 version: "1.0.0"
 description: Stream logs from Cribl into Elastic.
 type: integration

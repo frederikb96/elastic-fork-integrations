@@ -1,5 +1,5 @@
 type: logs
-title: Azure Event Hub Input
+title: "(⚠️ SVA RESTRICTED) Azure Event Hub Input"
 streams:
   - input: "azure-eventhub"
     enabled: true
@@ -75,6 +75,3 @@ streams:
         multi: false
         default: false
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

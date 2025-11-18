@@ -1,5 +1,5 @@
 type: logs
-title: Azure Audit Logs
+title: "(⚠️ SVA RESTRICTED) Azure Audit Logs"
 streams:
   - input: "azure-eventhub"
     enabled: false
@@ -59,6 +59,3 @@ streams:
         multi: false
         default: false
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

@@ -1,5 +1,5 @@
 name: azure_metrics
-title: Azure Resource Metrics
+title: "(⚠️ SVA RESTRICTED) Azure Resource Metrics"
 version: "1.11.0"
 description: Collect metrics from Azure resources with Elastic Agent.
 type: integration

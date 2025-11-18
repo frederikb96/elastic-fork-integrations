@@ -1,4 +1,4 @@
-title: Collect Amazon Security Lake Events
+title: "(⚠️ SVA RESTRICTED) Collect Amazon Security Lake Events"
 type: logs
 dataset: amazon_security_lake.event
 streams:
@@ -282,8 +282,6 @@ streams:
           #    sxSmbIUfc2SGJGCJD4I=
           #    -----END CERTIFICATE-----
 elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
   index_template:
     mappings:
       dynamic: true

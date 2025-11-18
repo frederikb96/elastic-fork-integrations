@@ -1,5 +1,5 @@
 type: logs
-title: Azure Logs (v2 preview)
+title: "(⚠️ SVA RESTRICTED) Azure Logs (v2 preview)"
 dataset: azure.events
 streams:
   - input: "azure-eventhub"
@@ -164,6 +164,3 @@ streams:
         description: >-
           (Processor v2 only) Override the default storage account endpoint suffix.
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true

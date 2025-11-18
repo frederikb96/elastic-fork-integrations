@@ -1,6 +1,6 @@
 format_version: "3.0.2"
 name: kafka_log
-title: Custom Kafka Logs
+title: "(⚠️ SVA RESTRICTED) Custom Kafka Logs"
 description: Collect data from kafka topic with Elastic Agent.
 type: integration
 version: "1.9.0"

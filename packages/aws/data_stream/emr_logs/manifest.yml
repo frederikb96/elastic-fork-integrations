@@ -1,4 +1,4 @@
-title: AWS EMR logs
+title: "(⚠️ SVA RESTRICTED) AWS EMR logs"
 type: logs
 streams:
   - input: aws-s3
@@ -283,6 +283,3 @@ streams:
         multi: false
         default: false
 # Ensures agents have permissions to write data to `logs-*-*`
-elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
