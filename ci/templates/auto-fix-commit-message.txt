@@ -1,0 +1,6 @@
+Auto-fix: Remove dynamic_dataset/dynamic_namespace flags
+
+Upstream merge detected integrations with dynamic flags.
+Auto-fix script removed flags and updated tracking file.
+
+See merge request for review checklist and details.
