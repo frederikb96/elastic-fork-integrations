@@ -211,7 +211,6 @@ def get_existing_mr() -> Optional[Dict]:
             return mr
         else:
             print("✓ No existing merge request found - will create new one")
-            # TODO: Send notification mail about new auto-fix MR requiring review
             return None
 
     except requests.exceptions.RequestException as e:

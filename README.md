@@ -36,13 +36,23 @@ Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA 
 - Commits all changes (merge + flag removals)
 - Triggers deploy pipeline automatically
 
-**Auto-fix actions:**
+**Auto-fix actions when flags detected:**
+- Creates fix branch (`auto-fix-dynamic-flags`)
 - Removes dynamic flags from data stream manifests
 - Prepends `(⚠️ SVA RESTRICTED)` to integration and data stream titles
 - Updates tracking file with affected integrations
 - Preserves other elasticsearch settings (index templates, mappings, etc)
+- Creates merge request for manual review
+- **Pipeline fails intentionally** to prevent auto-merge
 
-**Result:** Patched packages ready for deployment, changes visible in git history
+**Customer Center notification:**
+- Pipeline failure triggers notification via GitLab "Pipeline status emails" integration
+- Customer Center receives email with link to failed pipeline
+- Pipeline output clearly states: "Dynamic flags detected and fixed, MR created for review"
+- MR link provided in output for easy navigation
+- Customer Center reviews and merges MR to complete sync
+
+**Result:** Patched packages ready for deployment after manual MR approval
 
 ### Deploy Pipeline
 
@@ -79,6 +89,12 @@ Required GitLab CI/CD variables (Settings → CI/CD → Variables):
 - CI/CD → Schedules → New schedule
 - Pattern: `0 9 * * *` (daily 09:00 UTC)
 - Target: `main` branch
+
+**Pipeline failure notifications (Customer Center):**
+- Settings → Integrations → Pipeline status emails
+- Add Customer Center email address as recipient
+- Receives notifications on pipeline failures (including intentional MR workflow failures)
+- Email contains link to pipeline output with clear instructions
 
 ### Local Development
 
