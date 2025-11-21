@@ -184,19 +184,21 @@ class IntegrationProcessor:
                 return  # No elasticsearch section
 
             # Parse section to check if it has only dynamic flags
-            # We'll remove specific lines instead of whole section
+            # Track what we find: dynamic flags, comments, actual settings
             end_idx = es_line_idx + 1
             lines_to_remove = []
             has_other_settings = False
 
             while end_idx < len(lines):
                 line = lines[end_idx]
-                if line.strip() == "":
+                stripped = line.lstrip()
+
+                # Skip empty lines
+                if stripped == "":
                     end_idx += 1
                     continue
 
                 # Check indentation
-                stripped = line.lstrip()
                 current_indent = len(line) - len(stripped)
 
                 if current_indent <= es_indent:
@@ -207,20 +209,44 @@ class IntegrationProcessor:
                     "dynamic_namespace:"
                 ):
                     lines_to_remove.append(end_idx)
+                # Check if this is a comment line (ignore for "other settings" check)
+                elif stripped.startswith("#"):
+                    # Comments don't count as settings, but track for potential removal
+                    pass
                 else:
+                    # This is an actual setting (not flag, not comment)
                     has_other_settings = True
 
                 end_idx += 1
 
-            # Remove flagged lines
+            # Remove flagged lines and section if needed
             if lines_to_remove:
                 # Remove in reverse to preserve indices
                 for idx in reversed(lines_to_remove):
                     del lines[idx]
 
-                # If no other settings, remove elasticsearch section entirely
+                # If no other settings remain (only comments or nothing), remove entire section
                 if not has_other_settings:
-                    del lines[es_line_idx]
+                    # Find the end of the elasticsearch section again (after removals)
+                    section_end = es_line_idx + 1
+                    while section_end < len(lines):
+                        line = lines[section_end]
+                        stripped = line.lstrip()
+
+                        # Skip empty lines
+                        if stripped == "":
+                            section_end += 1
+                            continue
+
+                        # Check indentation
+                        current_indent = len(line) - len(stripped)
+                        if current_indent <= es_indent:
+                            break  # End of section
+
+                        section_end += 1
+
+                    # Remove entire section (header + all child lines including comments)
+                    del lines[es_line_idx:section_end]
 
                 with open(ds_manifest, "w") as f:
                     f.writelines(lines)
