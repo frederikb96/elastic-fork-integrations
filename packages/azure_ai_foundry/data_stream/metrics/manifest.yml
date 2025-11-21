@@ -66,5 +66,3 @@ streams:
 
     title: Azure AI Foundry metrics
     description: Collect AI Foundry metrics
-elasticsearch:
-  # Ensures agents have permissions to write data to `metrics-*-*`
