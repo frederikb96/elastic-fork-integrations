@@ -4,10 +4,7 @@ The `GITLAB_TOKEN` used for pipeline automation expires in **{days_left} days** 
 
 ### Impact
 
-When the token expires, the following will fail:
-- Version check pipeline (cannot create MRs for EPR updates)
-- Deployment pipeline authentication
-- Any workflow requiring GitLab API access
+When the token expires, ALL pipelines will FAIL!
 
 ### Token Rotation Steps
 
@@ -15,45 +12,35 @@ Follow these steps to rotate the token:
 
 **1. Create new Personal Access Token:**
 - Go to **Settings → Access Tokens**
+- Delete the old `GITLAB_TOKEN`
 - Click "Add new token"
 - Configure token:
-  - **Name:** `GITLAB_TOKEN Pipeline` (or similar descriptive name)
+  - **Name:** `GITLAB_TOKEN`
   - **Expiration date:** Set to maximum allowed (typically 365 days)
-  - **Scopes:** Select **all available scopes** to avoid permission issues
+  - Set to Maintainer role
+  - **Scopes:** Chekmark **all available scopes** to avoid permission issues
 - Click "Create personal access token"
 - **⚠️  Copy the token immediately** - it won't be shown again
 
 **2. Update CI/CD Variable:**
 - Go to **Settings → CI/CD → Variables**
 - Find the `GITLAB_TOKEN` variable
-- Click "Edit" (pencil icon)
+- Delete the old value
+- Create it newly
+- Ensure:
+  - Visible to "Masked and hidden"
+  - Flags: both unchecked
+- Set the key to `GITLAB_TOKEN`
 - Paste the new token value
-- Ensure these settings are enabled:
-  - ✅ **Protect variable** (only available to protected branches)
-  - ✅ **Mask variable** (hide value in job logs)
-- Click "Update variable"
-
-**3. Verify Token Works:**
-- Go to **CI/CD → Pipelines**
-- Click "Run pipeline" to trigger a manual pipeline
-- Check that jobs using GITLAB_TOKEN succeed
-- Version check job should complete successfully
+- Click "Add variable"
 
 **4. Update Expiration Reminder:**
-The new token's expiration will be automatically detected on the next scheduled check (weekly Friday 09:00 UTC). This issue will auto-close when the token has > 30 days remaining.
+The new token's expiration will be automatically detected on the next scheduled check. This issue will auto-close when the token has > 30 days remaining. You can also manually close this issue now.
 
 ### Troubleshooting
 
-**Pipeline still fails after rotation:**
-- Wait a few minutes for variable cache to clear
-- Check token has all required scopes
-- Verify token is not revoked in Settings → Access Tokens
-
 **Token scope requirements:**
-The token needs these scopes for full pipeline functionality:
-- `api` - Full API access (required for MR creation, issue management)
-- `read_repository` - Read git repositories
-- `write_repository` - Push commits and create branches
+The token needs many scopes to allow all pipeline operations. If you encounter permission errors in pipelines after rotation, ensure the token has all scopes enabled.
 
 ### Pipeline That Detected This
 
