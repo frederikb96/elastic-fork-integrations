@@ -12,10 +12,15 @@ Usage: python3 ci/remove-dynamic-flags.py
 Exit codes: 0 (success), 1 (failure)
 """
 
+import sys
+
+# Force unbuffered output for CI visibility
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
 from pathlib import Path
 from ruamel.yaml import YAML
 import re
-import sys
 from typing import Dict, Optional
 
 

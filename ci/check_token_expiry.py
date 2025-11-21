@@ -12,8 +12,13 @@ Usage: python3 ci/check_token_expiry.py
 Exit codes: 0 (ok), 1 (error), 2 (expiring, issue created)
 """
 
-import os
 import sys
+
+# Force unbuffered output for CI visibility
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+import os
 import requests
 from datetime import date, datetime
 from pathlib import Path

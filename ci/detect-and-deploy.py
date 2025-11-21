@@ -11,8 +11,13 @@ Environment variables required:
 Assumes SSH key is configured at ~/.ssh/epr_deploy_key with host alias "epr-server"
 """
 
-import os
 import sys
+
+# Force unbuffered output for CI visibility
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+import os
 import subprocess
 import yaml
 import hashlib

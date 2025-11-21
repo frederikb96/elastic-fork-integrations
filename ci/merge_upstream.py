@@ -12,8 +12,13 @@ Usage: python3 ci/merge_upstream.py
 Exit codes: 0 (success), 1 (failure), 2 (flags detected, MR created)
 """
 
-import os
 import sys
+
+# Force unbuffered output for CI visibility
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+import os
 import subprocess
 import requests
 from pathlib import Path
