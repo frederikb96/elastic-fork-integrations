@@ -81,6 +81,7 @@ deploy:packages:
       changes:
         - packages/**/*
         - ci/detect-and-deploy.py
+        - ci/force-rebuild.yml
         - .gitlab-ci.yml
       when: always
     - when: never

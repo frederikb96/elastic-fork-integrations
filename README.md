@@ -66,6 +66,14 @@ Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA 
 
 **Optimization:** Only rebuilds changed packages (not all 300+ integrations)
 
+**Force rebuild:** `ci/force-rebuild.yml` can list packages to rebuild regardless of version changes (auto-created by merge pipeline, manually editable, auto-deleted after successful deploy)
+
+```yaml
+packages:
+  - package_name_1
+  - package_name_2
+```
+
 **Result:** EPR serves updated integration packages to Fleet
 
 ## Details

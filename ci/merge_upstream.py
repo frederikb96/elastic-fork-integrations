@@ -307,6 +307,12 @@ def commit_and_push() -> bool:
     print("\nStaging modified files...")
     run_command(["git", "add", "packages/", "DYNAMIC_DATASET_MODIFICATIONS.md"])
 
+    # Stage force-rebuild file if exists
+    force_rebuild_file = REPO_ROOT / "ci" / "force-rebuild.yml"
+    if force_rebuild_file.exists():
+        print("  ✓ Including force-rebuild.yml")
+        run_command(["git", "add", str(force_rebuild_file)])
+
     # Commit using template
     print(f"\nCommitting changes on {FIX_BRANCH}...")
     if not COMMIT_MSG_TEMPLATE.exists():
