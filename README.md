@@ -85,16 +85,30 @@ Required GitLab CI/CD variables (Settings → CI/CD → Variables):
 - Expiration: Maximum allowed
 - Add as `GITLAB_TOKEN` variable with Protect + Mask flags
 
-**Pipeline schedule:**
+**Pipeline schedules:**
+
+*Daily upstream merge:*
 - CI/CD → Schedules → New schedule
-- Pattern: `0 9 * * *` (daily 09:00 UTC)
-- Target: `main` branch
+- Description: "Upstream Merge"
+- Interval: Custom (`0 9 * * *` daily at 09:00 UTC)
+- Target branch: main
+- Activate schedule
+
+*Weekly token expiry check:*
+- CI/CD → Schedules → New schedule
+- Description: "Token Expiry Check"
+- Interval: Custom (`0 9 * * 5` every Friday at 09:00 UTC)
+- Target branch: main
+- Variables: Add `TOKEN_EXPIRY_CHECK` with value `true`
+- Activate schedule
 
 **Pipeline failure notifications (Customer Center):**
 - Settings → Integrations → Pipeline status emails
 - Add Customer Center email address as recipient
 - Receives notifications on pipeline failures (including intentional MR workflow failures)
 - Email contains link to pipeline output with clear instructions
+
+**Token expiry monitoring:** Automated weekly check creates issue 30 days before expiration
 
 ### Local Development
 
@@ -124,6 +138,8 @@ elastic-package test static
 rsync -avz build/packages/ $SSH_USER_EPR@$SSH_HOST_EPR:/opt/sva-soc-epr/packages/
 ```
 
+**Note:** Local script execution creates real issues
+
 ### Troubleshooting
 
 **Pipeline fails after merge:**
@@ -149,3 +165,9 @@ rsync -avz build/packages/ $SSH_USER_EPR@$SSH_HOST_EPR:/opt/sva-soc-epr/packages
 - Verify rsync completed successfully
 - Check EPR container logs: `docker logs elastic-package-registry-soc`
 - Restart EPR manually if needed
+
+**Token expiry check schedule doesn't run:**
+- Verify schedule has `TOKEN_EXPIRY_CHECK=true` variable
+- Check schedule is active and target branch is correct
+- Check pipeline logs for schedule trigger
+
