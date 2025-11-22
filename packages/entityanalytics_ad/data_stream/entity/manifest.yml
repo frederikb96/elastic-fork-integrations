@@ -1,4 +1,4 @@
-title: Collect Identities logs from Active Directory
+title: "(⚠️ SVA RESTRICTED) Collect Identities logs from Active Directory"
 dataset: entityanalytics_ad.entity
 type: logs
 streams:

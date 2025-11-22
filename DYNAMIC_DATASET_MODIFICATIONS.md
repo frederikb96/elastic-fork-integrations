@@ -569,4 +569,17 @@ integrations:
       volume:
         namespaced: ✅
         comment: ''
+  entityanalytics_ad:
+    title: Active Directory Entity Analytics
+    comment: ''
+    data_streams:
+      device:
+        namespaced: ✅
+        comment: ''
+      entity:
+        namespaced: ⚠️
+        comment: ''
+      user:
+        namespaced: ✅
+        comment: ''
 ```
