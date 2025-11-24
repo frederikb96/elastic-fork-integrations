@@ -44,14 +44,16 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     Safe conditions (ALL must be true):
     1. Title was modified locally (current != base)
     2. Title conflicts with upstream (current != other)
-    3. Version was bumped upstream (other != base)
-    4. Version NOT conflicting (current == base OR current == other)
+    3. Version was bumped upstream (other != base) [OPTIONAL if no version field]
+    4. Version NOT conflicting (current == base OR current == other) [OPTIONAL if no version field]
        - Allows: version not modified locally (current == base)
        - Allows: both sides bumped to same value (current == other)
        - Rejects: both sides bumped to different values
-    5. No other fields were modified locally
+    5. No other fields were modified locally (except title and version)
 
     Returns True ONLY if all conditions met.
+
+    Note: Data stream manifests don't have version fields, so conditions 3 & 4 are skipped for them.
     """
     # Check 1: Title modified locally?
     base_title = base.get('title', '')
@@ -65,20 +67,26 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     if current_title == other_title:
         return False, "Title does not conflict (both sides have same value)"
 
-    # Check 3: Version bumped upstream?
+    # Check 3 & 4: Version handling (optional - data stream manifests don't have version)
     base_version = base.get('version', '')
     current_version = current.get('version', '')
     other_version = other.get('version', '')
 
-    if other_version == base_version:
-        return False, "Version was not bumped upstream"
+    has_version = bool(base_version or current_version or other_version)
 
-    # Check 4: Version conflicts (both sides modified to DIFFERENT values)?
-    # Allow: version not modified locally (current == base)
-    # Allow: version modified locally to SAME value as upstream (current == other)
-    # Reject: version modified locally to DIFFERENT value than upstream
-    if current_version != base_version and current_version != other_version:
-        return False, "Version conflicts (both sides bumped to different values)"
+    if has_version:
+        # Package manifest with version field - validate version changes
+        # Check 3: Version bumped upstream?
+        if other_version == base_version:
+            return False, "Version was not bumped upstream"
+
+        # Check 4: Version conflicts (both sides modified to DIFFERENT values)?
+        # Allow: version not modified locally (current == base)
+        # Allow: version modified locally to SAME value as upstream (current == other)
+        # Reject: version modified locally to DIFFERENT value than upstream
+        if current_version != base_version and current_version != other_version:
+            return False, "Version conflicts (both sides bumped to different values)"
+    # else: Data stream manifest without version field - skip version checks, only title matters
 
     # Check 5: No other fields modified locally (except title)?
     # Compare all keys between base and current
@@ -104,7 +112,9 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
 
     # All safety checks passed!
     # Determine the exact scenario for logging
-    if current_version == base_version:
+    if not has_version:
+        scenario = "title modified locally (data stream manifest, no version field)"
+    elif current_version == base_version:
         scenario = "title modified locally, version bumped upstream"
     else:
         scenario = "title modified locally, version bumped by both sides to same value"
