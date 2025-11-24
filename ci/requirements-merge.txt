@@ -3,3 +3,4 @@
 
 ruamel.yaml>=0.17.0
 requests>=2.31.0
+PyYAML>=6.0  # For ci/merge_manifest.py (custom merge driver)

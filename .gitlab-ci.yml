@@ -58,9 +58,19 @@ merge:upstream:
       pip install --no-cache-dir -r ci/requirements-merge.txt
       echo "✓ Python dependencies installed in venv"
 
-    # Configure git merge driver for "ours" strategy (keeps our files during conflicts)
+    # Configure git merge drivers
+    # 1. "ours" driver: keeps entire local file (for README.md)
     - git config merge.ours.driver true
-    - echo "README.md merge=ours" > .gitattributes
+    # 2. "manifest" driver: custom field-level merge for manifests
+    - git config merge.manifest.driver "python3 ci/merge_manifest.py %O %A %B %L"
+    - git config merge.manifest.name "Manifest field-level merge (title+version)"
+    # 3. Apply drivers via .gitattributes
+    - |
+      cat > .gitattributes <<'EOF'
+      README.md merge=ours
+      packages/*/manifest.yml merge=manifest
+      packages/*/data_stream/*/manifest.yml merge=manifest
+      EOF
   script:
     # Run Python merge script (all logic moved to Python for testability)
     - source .venv/bin/activate && python3 ci/merge_upstream.py
