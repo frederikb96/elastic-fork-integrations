@@ -125,13 +125,63 @@ def checkout_main() -> None:
     print("✓ On main branch")
 
 
+def prepare_fix_branch() -> bool:
+    """Prepare fix branch before merge (if exists).
+
+    Checks if fix branch exists and handles appropriately:
+    - If exists and not fully merged: checkout fix branch
+    - If exists and fully merged: delete it
+    - If doesn't exist: stay on main
+
+    Returns:
+        True if we switched to existing fix branch, False if staying on main
+    """
+    print("\nChecking if fix branch exists (before merge)...")
+
+    # Check if branch exists on remote
+    result = run_command(
+        ["git", "ls-remote", "--heads", "--exit-code", "origin", FIX_BRANCH],
+        check=False,
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        print(f"✓ Branch {FIX_BRANCH} does not exist - will stay on main")
+        return False
+
+    print(f"✓ Branch {FIX_BRANCH} exists - checking if merged...")
+    run_command(["git", "fetch", "origin", FIX_BRANCH])
+
+    # Check if branch is fully merged into target
+    merge_base_result = run_command(
+        ["git", "merge-base", f"origin/{MR_TARGET}", f"origin/{FIX_BRANCH}"],
+        capture_output=True,
+    )
+    merge_base = merge_base_result.stdout.strip()
+
+    fix_head_result = run_command(
+        ["git", "rev-parse", f"origin/{FIX_BRANCH}"], capture_output=True
+    )
+    fix_head = fix_head_result.stdout.strip()
+
+    if merge_base == fix_head:
+        print("✓ Branch is fully merged - deleting and staying on main...")
+        run_command(["git", "push", "origin", "--delete", FIX_BRANCH], check=False)
+        return False
+    else:
+        print("✓ Branch not fully merged - checking out fix branch...")
+        run_command(["git", "checkout", "-B", FIX_BRANCH, f"origin/{FIX_BRANCH}"])
+        print(f"✓ Now on {FIX_BRANCH} branch")
+        return True
+
+
 def merge_upstream() -> bool:
-    """Merge upstream/main into our main.
+    """Merge upstream/main into current branch.
 
     Returns:
         True if merge successful, False if conflicts
     """
-    print("\nMerging upstream/main into our main...")
+    print("\nMerging upstream/main into current branch...")
 
     # Perform merge with --no-commit to allow README.md checkout
     result = run_command(
@@ -224,48 +274,29 @@ def get_existing_mr() -> Optional[Dict]:
 
 
 def manage_fix_branch(mr_exists: bool) -> None:
-    """Manage fix branch lifecycle.
+    """Create fix branch if doesn't exist.
+
+    This is called after merge when flags are detected. By this point,
+    we're either on main (new branch needed) or already on fix branch
+    (from prepare_fix_branch).
 
     Args:
-        mr_exists: Whether MR already exists
+        mr_exists: Whether MR already exists (unused now, kept for compatibility)
     """
-    print("\n" + "Branch lifecycle management")
-    print("Checking if fix branch exists...")
-
-    # Check if branch exists on remote
+    # Check current branch
     result = run_command(
-        ["git", "ls-remote", "--heads", "--exit-code", "origin", FIX_BRANCH],
-        check=False,
-        capture_output=True,
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True
     )
+    current_branch = result.stdout.strip()
 
-    if result.returncode == 0:
-        print(f"✓ Branch {FIX_BRANCH} exists")
-        run_command(["git", "fetch", "origin", FIX_BRANCH])
+    if current_branch == FIX_BRANCH:
+        print(f"\n✓ Already on {FIX_BRANCH} branch (prepared before merge)")
+        return
 
-        # Check if branch is fully merged into target
-        print(f"Checking if branch is merged into {MR_TARGET}...")
-        merge_base_result = run_command(
-            ["git", "merge-base", f"origin/{MR_TARGET}", f"origin/{FIX_BRANCH}"],
-            capture_output=True,
-        )
-        merge_base = merge_base_result.stdout.strip()
-
-        fix_head_result = run_command(
-            ["git", "rev-parse", f"origin/{FIX_BRANCH}"], capture_output=True
-        )
-        fix_head = fix_head_result.stdout.strip()
-
-        if merge_base == fix_head:
-            print("✓ Branch is fully merged - deleting and recreating...")
-            run_command(["git", "push", "origin", "--delete", FIX_BRANCH], check=False)
-            run_command(["git", "checkout", "-b", FIX_BRANCH])
-        else:
-            print("✓ Branch not fully merged - reusing existing branch...")
-            run_command(["git", "checkout", "-b", FIX_BRANCH, f"origin/{FIX_BRANCH}"])
-    else:
-        print("✓ Branch does not exist - creating new branch...")
-        run_command(["git", "checkout", "-b", FIX_BRANCH])
+    # We're on main, need to create new fix branch
+    print(f"\nCreating new {FIX_BRANCH} branch...")
+    run_command(["git", "checkout", "-b", FIX_BRANCH])
 
 
 def run_auto_fix() -> int:
@@ -543,7 +574,10 @@ def main() -> int:
         # Checkout main
         checkout_main()
 
-        # Merge upstream
+        # Prepare fix branch if it exists (BEFORE merge)
+        prepare_fix_branch()
+
+        # Merge upstream (into whichever branch we're on)
         if not merge_upstream():
             print("")
             print(
