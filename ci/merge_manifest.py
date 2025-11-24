@@ -45,7 +45,10 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     1. Title was modified locally (current != base)
     2. Title conflicts with upstream (current != other)
     3. Version was bumped upstream (other != base)
-    4. Version was NOT modified locally (current == base)
+    4. Version NOT conflicting (current == base OR current == other)
+       - Allows: version not modified locally (current == base)
+       - Allows: both sides bumped to same value (current == other)
+       - Rejects: both sides bumped to different values
     5. No other fields were modified locally
 
     Returns True ONLY if all conditions met.
@@ -70,9 +73,12 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     if other_version == base_version:
         return False, "Version was not bumped upstream"
 
-    # Check 4: Version NOT modified locally?
-    if current_version != base_version:
-        return False, "Version was also modified locally (not safe to auto-merge)"
+    # Check 4: Version conflicts (both sides modified to DIFFERENT values)?
+    # Allow: version not modified locally (current == base)
+    # Allow: version modified locally to SAME value as upstream (current == other)
+    # Reject: version modified locally to DIFFERENT value than upstream
+    if current_version != base_version and current_version != other_version:
+        return False, "Version conflicts (both sides bumped to different values)"
 
     # Check 5: No other fields modified locally (except title)?
     # Compare all keys between base and current
@@ -97,7 +103,13 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
             return False, f"Field '{key}' was modified locally (not just title)"
 
     # All safety checks passed!
-    return True, "Safe to merge: only title modified locally, only version bumped upstream"
+    # Determine the exact scenario for logging
+    if current_version == base_version:
+        scenario = "title modified locally, version bumped upstream"
+    else:
+        scenario = "title modified locally, version bumped by both sides to same value"
+
+    return True, f"Safe to merge: {scenario}"
 
 
 def merge_manifest(base_file: str, current_file: str, other_file: str, marker_size: str) -> int:
