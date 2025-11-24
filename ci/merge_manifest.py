@@ -173,7 +173,10 @@ def merge_manifest(base_file: str, current_file: str, other_file: str, marker_si
 
     print("Merged values:")
     print(f"  title (local):    {current['title']}")
-    print(f"  version (upstream): {other['version']}")
+    if 'version' in other:
+        print(f"  version (upstream): {other['version']}")
+    else:
+        print("  version: (no version field - data stream manifest)")
     print("")
 
     # Write merged result to current file
