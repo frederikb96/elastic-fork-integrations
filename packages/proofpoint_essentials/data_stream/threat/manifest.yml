@@ -1,4 +1,4 @@
-title: Threat
+title: "(⚠️ SVA RESTRICTED) Threat"
 type: logs
 dataset: proofpoint_essentials.threat
 streams:
@@ -107,8 +107,6 @@ streams:
         description: >-
           Processors are used to reduce the number of fields in the exported event or to enhance the event with metadata. This executes in the agent before the logs are parsed.
 elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
   index_template:
     mappings:
       dynamic: true

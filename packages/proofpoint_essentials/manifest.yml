@@ -1,6 +1,6 @@
 format_version: 3.3.2
 name: proofpoint_essentials
-title: Proofpoint Essentials
+title: "(⚠️ SVA RESTRICTED) Proofpoint Essentials"
 version: 0.1.0
 description: Collect logs from Proofpoint Essentials with Elastic Agent.
 type: integration
