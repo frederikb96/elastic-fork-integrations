@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Custom git merge driver for manifest.yml files.
 
-SAFETY POLICY:
-This driver ONLY resolves conflicts when the conflict is EXACTLY:
-- Local modification: title field has "(⚠️ SVA RESTRICTED)" marker added
-- Upstream change: version field bumped to new version
-- No other conflicting changes
+BEHAVIOR:
+1. First, check if this is a "safe title+version" conflict that we handle specially:
+   - Local modification: title field has "(⚠️ SVA RESTRICTED)" marker added
+   - Upstream change: version field bumped to new version
+   - No other conflicting changes
+   → If yes: merge our title + their version
 
-For ANY other conflict scenario, this driver FAILS (exits non-zero)
-to let git abort the merge for manual resolution.
+2. For ANY other conflict scenario, fall back to git's default 3-way merge:
+   → If git can merge it cleanly: success
+   → If git can't merge it: real conflict requiring manual resolution
+
+This ensures we get vanilla git merge behavior except for our specific case.
 
 Git invokes this driver ONLY when a merge conflict is detected.
 
@@ -19,15 +23,40 @@ Arguments from git:
   %L (sys.argv[4]) - Conflict marker size
 """
 
+import subprocess
 import sys
 import yaml
 from pathlib import Path
 
 
+def git_default_merge(base_file: str, current_file: str, other_file: str) -> int:
+    """Perform git's default 3-way merge using git merge-file.
+
+    This gives us the exact same merge behavior as if no custom driver was configured.
+
+    Args:
+        base_file: Path to base (common ancestor) version
+        current_file: Path to current (ours) version - will be overwritten with result
+        other_file: Path to other (theirs) version
+
+    Returns:
+        0: Merge successful (no conflicts)
+        >0: Number of conflicts (merge failed)
+    """
+    # git merge-file modifies current_file in-place by default
+    # Returns 0 on success, positive number = number of conflicts, negative = error
+    result = subprocess.run(
+        ["git", "merge-file", current_file, base_file, other_file],
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode
+
+
 def load_yaml_safe(file_path: str) -> dict:
     """Load YAML file safely, return empty dict if fails."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = yaml.safe_load(f)
             return data if data else {}
     except Exception as e:
@@ -56,9 +85,9 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     Note: Data stream manifests don't have version fields, so conditions 3 & 4 are skipped for them.
     """
     # Check 1: Title modified locally?
-    base_title = base.get('title', '')
-    current_title = current.get('title', '')
-    other_title = other.get('title', '')
+    base_title = base.get("title", "")
+    current_title = current.get("title", "")
+    other_title = other.get("title", "")
 
     if current_title == base_title:
         return False, "Title was not modified locally (no SVA RESTRICTED marker)"
@@ -68,9 +97,9 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
         return False, "Title does not conflict (both sides have same value)"
 
     # Check 3 & 4: Version handling (optional - data stream manifests don't have version)
-    base_version = base.get('version', '')
-    current_version = current.get('version', '')
-    other_version = other.get('version', '')
+    base_version = base.get("version", "")
+    current_version = current.get("version", "")
+    other_version = other.get("version", "")
 
     has_version = bool(base_version or current_version or other_version)
 
@@ -104,7 +133,7 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
 
     # Check for modified values (excluding title and version which we already checked)
     for key in base_keys:
-        if key in ('title', 'version'):
+        if key in ("title", "version"):
             continue  # Already validated above
 
         if current.get(key) != base.get(key):
@@ -122,16 +151,18 @@ def is_safe_title_version_conflict(base: dict, current: dict, other: dict) -> tu
     return True, f"Safe to merge: {scenario}"
 
 
-def merge_manifest(base_file: str, current_file: str, other_file: str, marker_size: str) -> int:
+def merge_manifest(
+    base_file: str, current_file: str, other_file: str, marker_size: str
+) -> int:
     """Merge manifest files with strict safety validation.
 
     Returns:
         0: Merge successful (safe scenario)
         1: Merge failed (unsafe scenario or error)
     """
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("Custom Manifest Merge Driver")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"Base:    {Path(base_file).name}")
     print(f"Current: {Path(current_file).name}")
     print(f"Other:   {Path(other_file).name}")
@@ -151,14 +182,21 @@ def merge_manifest(base_file: str, current_file: str, other_file: str, marker_si
     is_safe, reason = is_safe_title_version_conflict(base, current, other)
 
     if not is_safe:
-        print("❌ ABORT: This conflict is NOT the safe title+version scenario")
+        print("ℹ️  Not a title+version-only conflict")
         print(f"   Reason: {reason}")
         print("")
-        print("   This merge conflict requires manual resolution.")
-        print("   Only auto-resolving when:")
-        print("     - Local change: title field only")
-        print("     - Upstream change: version field only")
-        return 1
+        print("   Falling back to git's default 3-way merge...")
+
+        # Try git's default merge algorithm
+        merge_result = git_default_merge(base_file, current_file, other_file)
+
+        if merge_result == 0:
+            print("✅ Git merged successfully (no conflicts)")
+            return 0
+        else:
+            print(f"❌ Git could not merge cleanly ({merge_result} conflicts)")
+            print("   Manual resolution required.")
+            return 1
 
     # Safe to merge! Combine local title + upstream version
     print("✅ SAFE MERGE DETECTED")
@@ -169,11 +207,11 @@ def merge_manifest(base_file: str, current_file: str, other_file: str, marker_si
     result = other.copy()
 
     # Preserve local title modification
-    result['title'] = current['title']
+    result["title"] = current["title"]
 
     print("Merged values:")
     print(f"  title (local):    {current['title']}")
-    if 'version' in other:
+    if "version" in other:
         print(f"  version (upstream): {other['version']}")
     else:
         print("  version: (no version field - data stream manifest)")
@@ -181,8 +219,10 @@ def merge_manifest(base_file: str, current_file: str, other_file: str, marker_si
 
     # Write merged result to current file
     try:
-        with open(current_file, 'w') as f:
-            yaml.dump(result, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        with open(current_file, "w") as f:
+            yaml.dump(
+                result, f, default_flow_style=False, allow_unicode=True, sort_keys=False
+            )
         print("✅ Merge successful - wrote combined manifest")
         return 0
     except Exception as e:
@@ -197,13 +237,13 @@ def main() -> int:
         print("Usage: merge_manifest.py %O %A %B %L", file=sys.stderr)
         return 1
 
-    base_file = sys.argv[1]      # %O
-    current_file = sys.argv[2]   # %A
-    other_file = sys.argv[3]     # %B
-    marker_size = sys.argv[4]    # %L
+    base_file = sys.argv[1]  # %O
+    current_file = sys.argv[2]  # %A
+    other_file = sys.argv[3]  # %B
+    marker_size = sys.argv[4]  # %L
 
     return merge_manifest(base_file, current_file, other_file, marker_size)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
