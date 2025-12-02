@@ -1,0 +1,3 @@
+README.md merge=ours
+packages/*/manifest.yml merge=manifest
+packages/*/data_stream/*/manifest.yml merge=manifest
