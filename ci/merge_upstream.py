@@ -285,8 +285,7 @@ def manage_fix_branch(mr_exists: bool) -> None:
     """
     # Check current branch
     result = run_command(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        capture_output=True
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True
     )
     current_branch = result.stdout.strip()
 
@@ -431,6 +430,34 @@ def create_mr() -> Optional[str]:
         return None
 
 
+def commit_merge_first() -> None:
+    """Commit the merge before creating fix branch.
+
+    This preserves MERGE_HEAD (2 parents) so git knows we merged upstream.
+    Must be called BEFORE switching branches, as checkout clears MERGE_HEAD.
+    """
+    print("\nCommitting merge first (preserving merge history)...")
+
+    # Stage all changes from the merge
+    run_command(["git", "add", "-A"])
+
+    # Commit with merge message - this creates a proper merge commit with 2 parents
+    result = run_command(
+        [
+            "git",
+            "commit",
+            "-m",
+            f"Merge upstream Elastic integrations ({CI_PIPELINE_SOURCE})",
+        ],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        print("✓ No changes to commit (already up to date)")
+    else:
+        print("✓ Merge committed (with upstream as second parent)")
+
+
 def handle_flags_detected() -> int:
     """Handle workflow when dynamic flags are detected.
 
@@ -441,11 +468,16 @@ def handle_flags_detected() -> int:
     print("⚠️  Dynamic flags detected - initiating MR workflow...")
     print("")
 
+    # CRITICAL: Commit the merge FIRST while MERGE_HEAD still exists
+    # This ensures proper merge commit with 2 parents
+    # Otherwise git won't know we already merged upstream
+    commit_merge_first()
+
     # Check if MR already exists
     existing_mr = get_existing_mr()
     mr_exists = existing_mr is not None
 
-    # Manage fix branch
+    # Now safe to switch branches - merge is already committed
     manage_fix_branch(mr_exists)
 
     # Run auto-fix script
