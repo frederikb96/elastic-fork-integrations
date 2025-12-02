@@ -582,4 +582,23 @@ integrations:
       user:
         namespaced: ✅
         comment: ''
+  proofpoint_essentials:
+    title: Proofpoint Essentials
+    comment: ''
+    data_streams:
+      clicks_blocked:
+        namespaced: ⚠️
+        comment: ''
+      clicks_permitted:
+        namespaced: ⚠️
+        comment: ''
+      message_blocked:
+        namespaced: ⚠️
+        comment: ''
+      message_delivered:
+        namespaced: ⚠️
+        comment: ''
+      threat:
+        namespaced: ⚠️
+        comment: ''
 ```
