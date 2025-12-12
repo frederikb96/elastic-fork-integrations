@@ -10,3 +10,7 @@ elastic-package
 
 # Folder created by the Sonar Scanner
 .scannerwork/
+
+# SOPS age key (private key for decryption)
+.age-key.txt
+*decrypted*

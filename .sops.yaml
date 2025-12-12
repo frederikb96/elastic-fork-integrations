@@ -1,0 +1,20 @@
+# Age public keys - add new recipients here, run `sops updatekeys` after
+# To revoke: remove key + run updatekeys on all encrypted files
+#
+# frederik: age13rc9jd5yuzhzgp683amedvdkmuatw2yzvzvg88qjunkzvxvfzssqecxe3x
+# mirko:    age1gfuj7eqprr74vtr55s89u50ds6c6zned7wdlkna27ku5nsyjydvqvv39zf
+#
+# SOPS_AGE_KEY: age15uflfxevfaajg02awxxrg3l2h7949w4gjpchrthel0q69728rvusrran74
+# This key is stored in GitLab CI/CD variables as SOPS_AGE_KEY
+# This key is used to decrypt sops files during CI/CD pipeline runs
+
+age_keys: &age_keys >-
+  age13rc9jd5yuzhzgp683amedvdkmuatw2yzvzvg88qjunkzvxvfzssqecxe3x,
+  age1gfuj7eqprr74vtr55s89u50ds6c6zned7wdlkna27ku5nsyjydvqvv39zf,
+  age15uflfxevfaajg02awxxrg3l2h7949w4gjpchrthel0q69728rvusrran74
+
+creation_rules:
+  - path_regex: \.sops\.env$
+    age: *age_keys
+  - path_regex: ssh-key\.sops$
+    age: *age_keys

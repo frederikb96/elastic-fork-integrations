@@ -1,70 +1,124 @@
 ---
-# Elastic Integrations SOC - Automated Merge and Deploy Pipeline
+# Elastic Integrations SOC Pipeline
+# See README.md for setup instructions
+
+# =============================================================================
+# WORKFLOW RULES - Prevent duplicate pipelines
+# =============================================================================
+workflow:
+  rules:
+    # Don't run branch pipeline if MR exists (prevents duplicates)
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # Run MR pipelines
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Run main branch pipelines (deploy jobs)
+    - if: $CI_COMMIT_BRANCH == "main"
+    # Run scheduled pipelines (merge, token expiry)
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    # Allow manual web triggers
+    - if: $CI_PIPELINE_SOURCE == "web"
 
 stages:
   - verify
   - merge
   - deploy
 
-# ============================================================================
-# TOKEN EXPIRY MONITORING: Weekly token expiration check
-# ============================================================================
+variables:
+  SOPS_VERSION: "3.9.1"
+
+# =============================================================================
+# REUSABLE SCRIPT FRAGMENTS (YAML anchors)
+# =============================================================================
+
+.sops_setup: &sops_setup
+  - |
+    echo "Installing SOPS v${SOPS_VERSION}..."
+    wget -q "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64" -O /usr/local/bin/sops
+    chmod +x /usr/local/bin/sops
+    sops --version
+  - |
+    echo "Setting up SOPS age key..."
+    echo "$SOPS_AGE_KEY" > $CI_PROJECT_DIR/.age-key.txt
+    chmod 600 $CI_PROJECT_DIR/.age-key.txt
+    export SOPS_AGE_KEY_FILE="$CI_PROJECT_DIR/.age-key.txt"
+
+.sops_decrypt_env: &sops_decrypt_env
+  - eval "$(sops -d .sops.env)"
+
+.sops_decrypt_ssh_key: &sops_decrypt_ssh_key
+  - |
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    sops -d ssh-key.sops > ~/.ssh/epr_deploy_key
+    chmod 600 ~/.ssh/epr_deploy_key
+
+.python_merge_setup: &python_merge_setup
+  - apk add --no-cache python3 py3-pip py3-virtualenv
+  - python3 -m venv .venv
+  - source .venv/bin/activate
+  - pip install --no-cache-dir -q -r ci/requirements-merge.txt
+
+.python_deploy_setup: &python_deploy_setup
+  - python3 -m venv .venv
+  - source .venv/bin/activate
+  - pip install --no-cache-dir -q -r ci/requirements-deploy.txt
+
+.elastic_package_setup: &elastic_package_setup
+  - |
+    echo "Installing elastic-package CLI..."
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/elastic/elastic-package/releases/latest | jq -r '.tag_name')
+    echo "Latest elastic-package version: $LATEST_VERSION"
+    wget -q "https://github.com/elastic/elastic-package/releases/download/${LATEST_VERSION}/elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
+    tar -xzf "elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
+    mv elastic-package /usr/local/bin/
+    chmod +x /usr/local/bin/elastic-package
+    echo "✓ elastic-package installed"
+
+# Matrix definitions - TARGET_ENV used by deploy script to select hardcoded config
+.matrix_staging: &matrix_staging
+  - TARGET_ENV: staging
+
+.matrix_production: &matrix_production
+  - TARGET_ENV: production
+
+# =============================================================================
+# VERIFY STAGE: Token expiry monitoring
+# =============================================================================
+
 check_token_expiry:
   stage: verify
   tags: ["docker"]
   image: alpine:latest
   before_script:
-    # Install required tools
-    - apk add --no-cache python3 py3-pip py3-virtualenv
-
-    # Create and activate Python venv, install dependencies
-    - |
-      echo "Creating Python virtual environment..."
-      python3 -m venv .venv
-      source .venv/bin/activate
-      echo "Installing Python dependencies into venv..."
-      pip install --no-cache-dir -r ci/requirements-merge.txt
-      echo "✓ Python dependencies installed in venv"
+    - apk add --no-cache wget
+    - *sops_setup
+    - *sops_decrypt_env
+    - *python_merge_setup
   script:
-    # Run Python token expiry check script
     - source .venv/bin/activate && python3 ci/check_token_expiry.py
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $TOKEN_EXPIRY_CHECK == "true"'
 
-# ============================================================================
-# MERGE PIPELINE: Scheduled upstream sync
-# ============================================================================
+# =============================================================================
+# MERGE STAGE: Scheduled upstream sync
+# =============================================================================
+
 merge:upstream:
   stage: merge
   image: alpine:latest
   tags: ["docker"]
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main" && $TOKEN_EXPIRY_CHECK != "true"'
-      when: always
-    - when: never
   variables:
     GIT_STRATEGY: clone
-    GIT_DEPTH: 0  # Full clone needed for merge
+    GIT_DEPTH: 0
   before_script:
-    # Install required tools
-    - apk add --no-cache git python3 py3-pip py3-virtualenv
-
-    # Create and activate Python venv, install dependencies
-    - |
-      echo "Creating Python virtual environment..."
-      python3 -m venv .venv
-      source .venv/bin/activate
-      echo "Installing Python dependencies into venv..."
-      pip install --no-cache-dir -r ci/requirements-merge.txt
-      echo "✓ Python dependencies installed in venv"
-
+    - apk add --no-cache git wget
+    - *sops_setup
+    - *sops_decrypt_env
+    - *python_merge_setup
     # Configure git merge drivers
-    # 1. "ours" driver: keeps entire local file (for README.md)
     - git config merge.ours.driver true
-    # 2. "manifest" driver: custom field-level merge for manifests
     - git config merge.manifest.driver "python3 ci/merge_manifest.py %O %A %B %L"
     - git config merge.manifest.name "Manifest field-level merge (title+version)"
-    # 3. Apply drivers via .gitattributes
     - |
       cat > .gitattributes <<'EOF'
       README.md merge=ours
@@ -72,84 +126,66 @@ merge:upstream:
       packages/*/data_stream/*/manifest.yml merge=manifest
       EOF
   script:
-    # Run Python merge script (all logic moved to Python for testability)
     - source .venv/bin/activate && python3 ci/merge_upstream.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main" && $TOKEN_EXPIRY_CHECK != "true"'
 
-# ============================================================================
-# DEPLOY PIPELINE: Build and deploy changed packages
-# ============================================================================
-deploy:packages:
+# =============================================================================
+# DEPLOY STAGE: Build and deploy packages
+# =============================================================================
+
+.deploy_template: &deploy_template
   stage: deploy
   image: debian:latest
   tags: ["docker"]
+  before_script:
+    - apt-get update -qq && apt-get install -y curl wget git openssh-client rsync jq python3 python3-pip python3-venv > /dev/null
+    - *sops_setup
+    - *sops_decrypt_ssh_key
+    - *python_deploy_setup
+    - *elastic_package_setup
+  script:
+    - |
+      echo "Deploying packages to ${TARGET_ENV} EPR..."
+      source .venv/bin/activate
+      python ci/detect-and-deploy.py --env ${TARGET_ENV}
+
+deploy:staging:
+  <<: *deploy_template
+  environment:
+    name: staging
+  parallel:
+    matrix: *matrix_staging
   rules:
-    # Run on any push/merge to main branch that touches packages/ or deploy script
-    # BUT NOT on scheduled pipelines (merge will trigger a new pipeline via commit)
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - packages/**/*
         - ci/detect-and-deploy.py
+        - ci/deploy_config.py
+        - ci/requirements-deploy.txt
         - ci/force-rebuild.yml
         - .gitlab-ci.yml
-      when: always
-    - when: never
-  variables:
-    EPR_DEPLOY_PATH: "/opt/sva-soc-epr/packages"
-  before_script:
-    # Install required tools (suppress stdout, show only errors)
-    - |
-      apt-get update -qq
-      apt-get install -y curl wget git openssh-client rsync jq python3 python3-pip python3-venv > /dev/null
 
-    # Create and activate Python venv, install dependencies inside it
-    - |
-      echo "Creating Python virtual environment..."
-      python3 -m venv .venv
-      source .venv/bin/activate
-      echo "Installing Python dependencies into venv..."
-      pip install --no-cache-dir -r ci/requirements-deploy.txt
-      echo "✓ Python dependencies installed in venv"
-
-    # Install elastic-package CLI (latest version)
-    - |
-      echo "Installing elastic-package CLI..."
-      LATEST_VERSION=$(curl -s https://api.github.com/repos/elastic/elastic-package/releases/latest | jq -r '.tag_name')
-      echo "Latest elastic-package version: $LATEST_VERSION"
-
-      wget -q "https://github.com/elastic/elastic-package/releases/download/${LATEST_VERSION}/elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
-      tar -xzf "elastic-package_${LATEST_VERSION#v}_linux_amd64.tar.gz"
-      mv elastic-package /usr/local/bin/
-      chmod +x /usr/local/bin/elastic-package
-
-      echo "✓ elastic-package installed:"
-      elastic-package version
-
-    # Setup SSH key for EPR server access
-    - |
-      echo "Setting up SSH key for EPR server..."
-      mkdir -p ~/.ssh
-      chmod 700 ~/.ssh
-
-      # Write SSH key from CI/CD variable
-      echo "$SSH_KEY_EPR" > ~/.ssh/epr_deploy_key
-      chmod 600 ~/.ssh/epr_deploy_key
-
-      # Configure SSH
-      cat > ~/.ssh/config <<EOF
-      Host epr-server
-          HostName ${SSH_HOST_EPR}
-          User ${SSH_USER_EPR}
-          IdentityFile ~/.ssh/epr_deploy_key
-          StrictHostKeyChecking no
-          UserKnownHostsFile=/dev/null
-      EOF
-      chmod 600 ~/.ssh/config
-
-      echo "✓ SSH key configured"
-  script:
-    # Run detect-and-deploy script (Python) using venv
-    - |
-      source .venv/bin/activate
-      python ci/detect-and-deploy.py
+deploy:production:
+  <<: *deploy_template
+  environment:
+    name: production
+  parallel:
+    matrix: *matrix_production
+  needs:
+    - job: deploy:staging
+      parallel:
+        matrix: *matrix_staging
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - packages/**/*
+        - ci/detect-and-deploy.py
+        - ci/deploy_config.py
+        - ci/requirements-deploy.txt
+        - ci/force-rebuild.yml
+        - .gitlab-ci.yml

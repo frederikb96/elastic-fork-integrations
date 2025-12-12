@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""
-Detect changed Elastic integration packages and deploy to EPR server.
-Used in GitLab CI pipeline for selective package building.
-
-Environment variables required:
-    SSH_HOST_EPR: EPR server hostname/IP
-    SSH_USER_EPR: SSH username for EPR server
-    EPR_DEPLOY_PATH: Deployment path on EPR server (e.g., /opt/sva-soc-epr/packages)
-
-Assumes SSH key is configured at ~/.ssh/epr_deploy_key with host alias "epr-server"
-"""
+"""Detect changed packages and deploy to EPR server."""
 
 import sys
 
@@ -17,13 +7,15 @@ import sys
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-import os
+import argparse
 import subprocess
 import yaml
 import hashlib
 from pathlib import Path
 from typing import Dict, List
 from dataclasses import dataclass
+
+from deploy_config import get_config, EPRConfig
 
 
 @dataclass
@@ -47,17 +39,12 @@ class DeploymentError(Exception):
 class DeploymentManager:
     """Manages detection and deployment of Elastic integration packages."""
 
-    def __init__(self):
-        # Get environment variables
-        self.ssh_host = os.getenv("SSH_HOST_EPR")
-        self.ssh_user = os.getenv("SSH_USER_EPR")
-        self.deploy_path = os.getenv("EPR_DEPLOY_PATH")
+    # SSH options for all commands
+    SSH_OPTS = "-i ~/.ssh/epr_deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-        if not all([self.ssh_host, self.ssh_user, self.deploy_path]):
-            raise DeploymentError(
-                "Missing required environment variables: "
-                "SSH_HOST_EPR, SSH_USER_EPR, EPR_DEPLOY_PATH"
-            )
+    def __init__(self, config: EPRConfig):
+        self.config = config
+        self.ssh_target = f"{config.user}@{config.host}"
 
         self.repo_root = Path(__file__).parent.parent
         self.packages_dir = self.repo_root / "packages"
@@ -74,9 +61,9 @@ class DeploymentManager:
         self, command: str, capture_output: bool = True
     ) -> subprocess.CompletedProcess:
         """Run SSH command on EPR server."""
-        cmd = ["ssh", "-o", "ConnectTimeout=10", "epr-server", command]
+        full_cmd = f"ssh {self.SSH_OPTS} -o ConnectTimeout=10 {self.ssh_target} '{command}'"
         result = subprocess.run(
-            cmd, capture_output=capture_output, text=True, check=False
+            full_cmd, shell=True, capture_output=capture_output, text=True, check=False
         )
         return result
 
@@ -254,7 +241,7 @@ class DeploymentManager:
         # Fetch all manifest files from server (raw YAML content)
         # Use delimiters to separate multiple files in single SSH call
         fetch_script = f"""
-cd {self.deploy_path} || exit 1
+cd {self.config.deploy_path} || exit 1
 
 # Output all manifests with delimiters
 for manifest in */*/manifest.yml; do
@@ -424,8 +411,9 @@ echo "===ZIPS_END==="
         """Deploy built packages to EPR server via rsync."""
         self.print_header("4", "6", "Deploying packages to EPR server")
 
-        print(f"Syncing packages to epr-server:{self.deploy_path}...")
+        print(f"Syncing packages to {self.ssh_target}:{self.config.deploy_path}...")
 
+        rsync_ssh = f"ssh {self.SSH_OPTS}"
         result = subprocess.run(
             [
                 "rsync",
@@ -436,8 +424,9 @@ echo "===ZIPS_END==="
                 "--no-times",
                 "--no-owner",
                 "--no-group",
+                "-e", rsync_ssh,
                 f"{self.build_dir}/",
-                f"epr-server:{self.deploy_path}/",
+                f"{self.ssh_target}:{self.config.deploy_path}/",
             ],
             capture_output=True,
             text=True,
@@ -463,7 +452,7 @@ echo "===ZIPS_END==="
         pkg_paths = " ".join(f"{p.name}:{p.version}" for p in built)
 
         validate_script = f"""
-cd {self.deploy_path} || exit 1
+cd {self.config.deploy_path} || exit 1
 
 # Check each package
 for pkg in {pkg_paths}; do
@@ -589,8 +578,10 @@ done
         """Restart EPR container to load new packages."""
         self.print_header("6", "6", "Restarting EPR container to load new packages")
 
+        # Go to parent directory of packages (where docker-compose.yml lives)
+        epr_dir = str(Path(self.config.deploy_path).parent)
         result = self.run_ssh(
-            f"cd {self.deploy_path} && sudo docker restart epr", capture_output=True
+            f"cd {epr_dir} && sudo docker restart epr", capture_output=True
         )
 
         if result.returncode != 0:
@@ -688,7 +679,19 @@ done
 
 def main():
     """Entry point."""
-    manager = DeploymentManager()
+    parser = argparse.ArgumentParser(description="Deploy Elastic packages to EPR server")
+    parser.add_argument(
+        "--env",
+        required=True,
+        choices=["staging", "production"],
+        help="Target environment",
+    )
+    args = parser.parse_args()
+
+    config = get_config(args.env)
+    print(f"Target: {args.env} ({config.host})")
+
+    manager = DeploymentManager(config)
     sys.exit(manager.run())
 
 

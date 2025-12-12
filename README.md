@@ -2,7 +2,7 @@
 
 Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA SOC multi-tenant deployments.
 
-**Related repo:** [elastic-epr-soc](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/elastic-epr-soc) (EPR deployment)
+**Related repo:** [elastic-epr-soc](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-epr-soc) (EPR deployment)
 
 ## Overview
 
@@ -15,10 +15,18 @@ Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA 
 **System flow:**
 - Daily merge from upstream Elastic integrations
 - Automated detection and removal of dynamic flags
-- Modified packages deployed to EPR
+- Modified packages deployed to staging and production EPR
 - Integrations marked with `(⚠️ SVA RESTRICTED)` prefix in Kibana Fleet
 
 **Tracking:** All modifications tracked in [DYNAMIC_DATASET_MODIFICATIONS.md](DYNAMIC_DATASET_MODIFICATIONS.md)
+
+## Multi-Environment Architecture
+
+Packages deploy to staging and production EPR environments:
+- **Staging:** Test package changes before production rollout
+- **Production:** Serves all production Elastic clusters
+
+Deploy pipeline runs automatically for both environments when packages change.
 
 ## Pipelines
 
@@ -56,15 +64,12 @@ Fork of [elastic/integrations](https://github.com/elastic/integrations) for SVA 
 
 ### Deploy Pipeline
 
-**Trigger:** Package changes on `main` branch (NOT scheduled)
+**Trigger:** Package changes on `main` branch
 
 **What it does:**
-- Detects which packages changed since last deployment
-- Builds changed packages using `elastic-package`
-- Deploys to EPR server via rsync
-- Restarts EPR container to load new packages
-
-**Optimization:** Only rebuilds changed packages (not all 300+ integrations)
+- Builds changed packages only (not all 300+)
+- Deploys to staging EPR, then production EPR
+- Restarts EPR containers
 
 **Force rebuild:** `ci/force-rebuild.yml` can list packages to rebuild regardless of version changes (auto-created by merge pipeline, manually editable, auto-deleted after successful deploy)
 
@@ -74,108 +79,22 @@ packages:
   - package_name_2
 ```
 
-**Result:** EPR serves updated integration packages to Fleet
+## Setup
 
-## Details
+### SOPS Encryption
 
-### CI/CD Setup
+Secrets (SSH key, GitLab token) are encrypted using SOPS with age keys.
 
-Required GitLab CI/CD variables (Settings → CI/CD → Variables):
+**Full SOPS documentation:** [elastic-clusters README - SOPS Multi-Recipient Encryption](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#sops-multi-recipient-encryption)
 
-- `GITLAB_TOKEN` - Personal Access Token with all scopes (for git push operations)
-- `SSH_KEY_EPR` - Private SSH key for EPR server access
-- `SSH_USER_EPR` - SSH username for EPR server
-- `SSH_HOST_EPR` - EPR server hostname/IP
+### CI/CD Variables
 
-**GitLab token creation:**
-- Settings → Access Tokens → New token
-- Scopes: All available
-- Expiration: Maximum allowed
-- Add as `GITLAB_TOKEN` variable with Protect + Mask flags
+`SOPS_AGE_KEY` is configured as a **group variable** - no per-repo setup needed. See [elastic-clusters README](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#sops-multi-recipient-encryption) for details.
 
-**Pipeline schedules:**
+Server config is in `ci/deploy_config.py`.
 
-*Daily upstream merge:*
-- CI/CD → Schedules → New schedule
-- Description: "Upstream Merge"
-- Interval: Custom (`0 9 * * *` daily at 09:00 UTC)
-- Target branch: main
-- Activate schedule
+### Pipeline Schedules
 
-*Weekly token expiry check:*
-- CI/CD → Schedules → New schedule
-- Description: "Token Expiry Check"
-- Interval: Custom (`0 9 * * 5` every Friday at 09:00 UTC)
-- Target branch: main
-- Variables: Add `TOKEN_EXPIRY_CHECK` with value `true`
-- Activate schedule
+**Daily upstream merge:** `0 9 * * *` on main
 
-**Pipeline failure notifications (Customer Center):**
-- Settings → Integrations → Pipeline status emails
-- Add Customer Center email address as recipient
-- Receives notifications on pipeline failures (including intentional MR workflow failures)
-- Email contains link to pipeline output with clear instructions
-
-**Token expiry monitoring:** Automated weekly check creates issue 30 days before expiration
-
-### Local Development
-
-**Prerequisites:** Docker, `elastic-package` CLI ([install guide](https://github.com/elastic/elastic-package))
-
-**Build single package:**
-```bash
-cd packages/<package-name>
-elastic-package build
-```
-
-**Build all packages:**
-```bash
-./ci/build-all-packages.sh
-```
-
-**Test package locally:**
-```bash
-cd packages/<package-name>
-elastic-package test pipeline
-elastic-package test static
-```
-
-**Deploy manually:**
-```bash
-# After building packages
-rsync -avz build/packages/ $SSH_USER_EPR@$SSH_HOST_EPR:/opt/sva-soc-epr/packages/
-```
-
-**Note:** Local script execution creates real issues
-
-### Troubleshooting
-
-**Pipeline fails after merge:**
-- Check pipeline logs for merge conflicts
-- Resolve manually: `git fetch origin && git merge upstream/main`
-- Update `.gitattributes` if new files need "ours" strategy
-
-**Auto-fix script fails:**
-- Check `ci/remove-dynamic-flags.py` error output
-- Verify YAML structure in affected package manifests
-- Common issue: Malformed elasticsearch section
-
-**Flags remain after auto-fix:**
-- Pipeline will fail with specific error
-- Investigate affected package manually
-
-**Deploy pipeline skips packages:**
-- Check `ci/detect-and-deploy.py` logic
-- Verify git history shows package changes
-- May need to force rebuild specific package
-
-**EPR doesn't serve new packages:**
-- Verify rsync completed successfully
-- Check EPR container logs: `docker logs elastic-package-registry-soc`
-- Restart EPR manually if needed
-
-**Token expiry check schedule doesn't run:**
-- Verify schedule has `TOKEN_EXPIRY_CHECK=true` variable
-- Check schedule is active and target branch is correct
-- Check pipeline logs for schedule trigger
-
+**Weekly token expiry check:** `0 9 * * 5` on main with `TOKEN_EXPIRY_CHECK=true`
