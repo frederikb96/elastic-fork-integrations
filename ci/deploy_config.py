@@ -18,7 +18,7 @@ ENVIRONMENTS = {
         deploy_path="/opt/sva-soc-epr/packages",
     ),
     "production": EPRConfig(
-        host="10.10.146.103",
+        host="10.10.146.84",
         user="socci",
         deploy_path="/opt/sva-soc-epr/packages",
     ),
