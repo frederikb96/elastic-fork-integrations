@@ -83,18 +83,20 @@ packages:
 
 ### SOPS Encryption
 
-Secrets (SSH key, GitLab token) are encrypted using SOPS with age keys.
+SSH deploy key is encrypted using SOPS with age keys.
 
 **Full SOPS documentation:** [elastic-clusters README - SOPS Multi-Recipient Encryption](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#sops-multi-recipient-encryption)
 
 ### CI/CD Variables
 
-`SOPS_AGE_KEY` is configured as a **group variable** - no per-repo setup needed. See [elastic-clusters README](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#sops-multi-recipient-encryption) for details.
+Both variables are configured as **group variables** - no per-repo setup needed:
+- `SOPS_AGE_KEY`: For SOPS decryption
+- `GITLAB_TOKEN`: For API operations (auto-rotated)
+
+See [elastic-clusters README - GitLab Token Auto-Rotation](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#gitlab-token-auto-rotation) for token setup.
 
 Server config is in `ci/deploy_config.py`.
 
 ### Pipeline Schedules
 
 **Daily upstream merge:** `0 9 * * *` on main
-
-**Weekly token expiry check:** `0 9 * * 5` on main with `TOKEN_EXPIRY_CHECK=true`
