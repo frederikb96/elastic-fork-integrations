@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "includePaths": [
+    ".gitlab-ci.yml",
+    "ci/**"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+      "matchStrings": [
+        "SOPS_VERSION:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "depNameTemplate": "getsops/sops",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}
