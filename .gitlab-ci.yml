@@ -24,7 +24,7 @@ stages:
   - deploy
 
 variables:
-  SOPS_VERSION: "3.9.1"
+  SOPS_VERSION: "3.11.0"
 
 # =============================================================================
 # REUSABLE SCRIPT FRAGMENTS (YAML anchors)
@@ -83,7 +83,7 @@ variables:
 
 merge:upstream:
   stage: merge
-  image: alpine:latest
+  image: alpine:3.23
   tags: ["docker"]
   variables:
     GIT_STRATEGY: clone
@@ -112,7 +112,7 @@ merge:upstream:
 
 .deploy_template: &deploy_template
   stage: deploy
-  image: debian:latest
+  image: debian:12.12
   tags: ["docker"]
   before_script:
     - apt-get update -qq && apt-get install -y curl wget git openssh-client rsync jq python3 python3-pip python3-venv > /dev/null
