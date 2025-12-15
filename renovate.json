@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "includePaths": [
     ".gitlab-ci.yml",
     "ci/**"
@@ -8,7 +10,9 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+      "managerFilePatterns": [
+        "/^\\.gitlab-ci\\.yml$/"
+      ],
       "matchStrings": [
         "SOPS_VERSION:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
@@ -17,7 +21,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+      "managerFilePatterns": [
+        "/^\\.gitlab-ci\\.yml$/"
+      ],
       "matchStrings": [
         "image:\\s*alpine:(?<currentValue>[^\\s]+)"
       ],
@@ -26,7 +32,9 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+      "managerFilePatterns": [
+        "/^\\.gitlab-ci\\.yml$/"
+      ],
       "matchStrings": [
         "image:\\s*debian:(?<currentValue>[^\\s]+)"
       ],
