@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Container Instance
+    title: "(⚠️ SVA RESTRICTED) Container Instance"
     description: Collect Container Instance metrics
 elasticsearch:
   index_mode: "time_series"

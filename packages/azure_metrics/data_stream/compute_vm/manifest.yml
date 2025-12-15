@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Compute VM
+    title: "(⚠️ SVA RESTRICTED) Compute VM"
     description: Collect Compute VM metrics
 elasticsearch:
   index_mode: "time_series"

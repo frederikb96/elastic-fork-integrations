@@ -5,7 +5,7 @@ streams:
   - input: logfile
     enabled: false
     template_path: log.yml.hbs
-    title: CyberArk PAS audit logs
+    title: "(⚠️ SVA RESTRICTED) CyberArk PAS audit logs"
     description: Collect CyberArk PAS audit logs (and monitoring data) from files.
     vars:
       - name: paths
@@ -43,7 +43,7 @@ streams:
   - input: tcp
     enabled: true
     template_path: tcp.yml.hbs
-    title: CyberArk PAS audit logs (TCP)
+    title: "(⚠️ SVA RESTRICTED) CyberArk PAS audit logs (TCP)"
     description: Collect CyberArk PAS audit logs (and monitoring data) using TCP input
     vars:
       - name: syslog_host
@@ -96,7 +96,7 @@ streams:
   - input: udp
     enabled: true
     template_path: udp.yml.hbs
-    title: CyberArk PAS audit logs (UDP)
+    title: "(⚠️ SVA RESTRICTED) CyberArk PAS audit logs (UDP)"
     description: Collect CyberArk PAS audit logs (and monitoring data) using UDP input
     vars:
       - name: syslog_host

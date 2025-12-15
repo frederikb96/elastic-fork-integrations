@@ -199,6 +199,6 @@ streams:
         type: yaml
         default: ""
 
-    title: Prometheus collector metrics
+    title: "(⚠️ SVA RESTRICTED) Prometheus collector metrics"
     enabled: true
     description: Collect Prometheus collector metrics

@@ -3,7 +3,7 @@ type: logs
 dataset: amazon_security_lake.event
 streams:
   - input: aws-s3
-    title: Amazon Security Lake Events
+    title: "(⚠️ SVA RESTRICTED) Amazon Security Lake Events"
     description: Collect Amazon Security Lake Events via AWS S3 input.
     template_path: aws-s3.yml.hbs
     vars:

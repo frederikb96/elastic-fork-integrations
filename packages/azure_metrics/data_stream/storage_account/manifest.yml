@@ -38,7 +38,7 @@ streams:
         show_user: true
         required: true
         default: PT5M
-    title: Storage Account
+    title: "(⚠️ SVA RESTRICTED) Storage Account"
     description: Collect Storage Account metrics
 elasticsearch:
   index_mode: "time_series"

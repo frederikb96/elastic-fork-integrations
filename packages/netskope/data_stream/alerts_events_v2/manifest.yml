@@ -4,7 +4,7 @@ dataset: netskope.alerts_events_v2
 streams:
   - input: azure-blob-storage
     description: Collect Netskope Alert and Event logs via Azure Blob Storage.
-    title: Netskope Alert and Event Logs
+    title: "(⚠️ SVA RESTRICTED) Netskope Alert and Event Logs"
     template_path: abs.yml.hbs
     enabled: false
     vars:
@@ -180,7 +180,7 @@ streams:
         show_user: false
   - input: aws-s3
     template_path: aws-s3.yml.hbs
-    title: Collect Alert and Event logs via AWS S3 or SQS
+    title: "(⚠️ SVA RESTRICTED) Collect Alert and Event logs via AWS S3 or SQS"
     description: Collect Alert and Event logs via AWS S3 or SQS input.
     enabled: false
     vars:
@@ -294,7 +294,7 @@ streams:
         description: >-
           Processors are used to reduce the number of fields in the exported event or to enhance the event with metadata. This executes in the agent before the logs are parsed. See [Processors](https://www.elastic.co/guide/en/beats/filebeat/current/filtering-and-enhancing-data.html) for details.
   - input: gcs
-    title: Collect Netskope Alert and Event logs via Google Cloud Storage
+    title: "(⚠️ SVA RESTRICTED) Collect Netskope Alert and Event logs via Google Cloud Storage"
     description: Collect Netskope Alert and Event SIEM logs via Google Cloud Storage.
     template_path: gcs.yml.hbs
     enabled: false

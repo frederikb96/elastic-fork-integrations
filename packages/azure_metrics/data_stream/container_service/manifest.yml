@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Container Service
+    title: "(⚠️ SVA RESTRICTED) Container Service"
     description: Collect Container Service metrics
 elasticsearch:
   index_mode: "time_series"

@@ -2,7 +2,7 @@ title: "(⚠️ SVA RESTRICTED) Docker container logs"
 type: logs
 streams:
   - input: filestream
-    title: Collect Docker container logs
+    title: "(⚠️ SVA RESTRICTED) Collect Docker container logs"
     description: Collect Docker container logs
     vars:
       - name: paths

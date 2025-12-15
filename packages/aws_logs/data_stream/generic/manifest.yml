@@ -4,7 +4,7 @@ streams:
   - input: aws-cloudwatch
     enabled: false
     template_path: aws-cloudwatch.yml.hbs
-    title: AWS logs via CloudWatch
+    title: "(⚠️ SVA RESTRICTED) AWS logs via CloudWatch"
     description: Collect logs using aws-cloudwatch input.
     vars:
       - name: log_group_arn
@@ -153,7 +153,7 @@ streams:
   - input: aws-s3
     enabled: false
     template_path: aws-s3.yml.hbs
-    title: AWS logs from S3
+    title: "(⚠️ SVA RESTRICTED) AWS logs from S3"
     description: Collect logs using aws-s3 input with or without SQS notification
     vars:
       - name: api_timeout

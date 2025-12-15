@@ -5,7 +5,7 @@ streams:
   - input: tcp
     enabled: false
     template_path: tcp.yml.hbs
-    title: Syslog TCP input
+    title: "(⚠️ SVA RESTRICTED) Syslog TCP input"
     description: Collect Falco alerts using syslog input over TCP
     vars:
       - name: listen_address
@@ -43,7 +43,7 @@ streams:
   # TODO we need to consider if this will work with a logfile set up for rotation
   - input: logfile
     template_path: logfile.yml.hbs
-    title: Logfile Input
+    title: "(⚠️ SVA RESTRICTED) Logfile Input"
     description: Collect Falco Alerts using logfile input
     enabled: false
     vars:

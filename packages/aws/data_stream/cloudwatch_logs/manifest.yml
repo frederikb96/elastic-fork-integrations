@@ -4,7 +4,7 @@ streams:
   - input: aws-cloudwatch
     enabled: false
     template_path: aws-cloudwatch.yml.hbs
-    title: AWS CloudWatch logs via CloudWatch
+    title: "(⚠️ SVA RESTRICTED) AWS CloudWatch logs via CloudWatch"
     description: Collect AWS CloudWatch logs using cloudwatch input.
     vars:
       - name: log_group_arn

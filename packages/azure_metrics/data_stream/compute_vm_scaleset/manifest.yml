@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Compute VM Scaleset
+    title: "(⚠️ SVA RESTRICTED) Compute VM Scaleset"
     description: Collect Compute VM Scaleset metrics
 elasticsearch:
   index_mode: "time_series"

@@ -5,7 +5,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "stream.yml.hbs"
-    title: Collect Azure logs from Event Hub
+    title: "(⚠️ SVA RESTRICTED) Collect Azure logs from Event Hub"
     description: |
       Collect all the supported (see list below) Azure logs from Event Hub to a target data stream.
 

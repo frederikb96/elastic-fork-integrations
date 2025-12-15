@@ -3,7 +3,7 @@ dataset: entityanalytics_okta.entity
 type: logs
 streams:
   - input: entity-analytics
-    title: User Identities logs
+    title: "(⚠️ SVA RESTRICTED) User Identities logs"
     enabled: false
     description: Collect User Identities logs from Okta.
     template_path: entity-analytics.yml.hbs

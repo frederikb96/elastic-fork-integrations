@@ -138,6 +138,6 @@ streams:
         type: yaml
         default: ""
 
-    title: Prometheus query metrics
+    title: "(⚠️ SVA RESTRICTED) Prometheus query metrics"
     enabled: false
     description: Collect Prometheus query metrics

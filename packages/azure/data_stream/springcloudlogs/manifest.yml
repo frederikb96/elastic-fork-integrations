@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure Spring Apps logs"
+    title: "(⚠️ SVA RESTRICTED) Azure Spring Apps logs"
     description: "Collect Azure Spring Apps logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

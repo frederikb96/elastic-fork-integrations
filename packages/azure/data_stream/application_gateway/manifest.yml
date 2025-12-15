@@ -5,7 +5,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: Azure Application Gateway logs
+    title: "(⚠️ SVA RESTRICTED) Azure Application Gateway logs"
     description: Collect Azure Application Gateway logs using azure-eventhub input
     vars:
       - name: preserve_original_event

@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Microsoft Graph Activity Logs"
+    title: "(⚠️ SVA RESTRICTED) Microsoft Graph Activity Logs"
     description: "Collect Microsoft Graph Activity Logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

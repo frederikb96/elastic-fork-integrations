@@ -3,7 +3,7 @@ type: logs
 dataset: entityanalytics_entra_id.entity
 streams:
   - input: entity-analytics
-    title: Collect identities
+    title: "(⚠️ SVA RESTRICTED) Collect identities"
     description: Collecting identities from Microsoft Entra ID.
     template_path: entity-analytics.yml.hbs
     vars:

@@ -99,6 +99,7 @@ class IntegrationProcessor:
             if is_affected:
                 self._remove_flags_from_datastream(ds_name)
                 self._update_datastream_title(ds_name)
+                self._update_stream_titles(ds_name)
 
     def _update_package_title(self) -> None:
         """Add prefix to package manifest title using text-based editing."""
@@ -315,6 +316,94 @@ class IntegrationProcessor:
             )
             sys.exit(1)
 
+    def _update_stream_titles(self, ds_name: str) -> None:
+        """Add prefix to stream titles (inside streams: section) using text-based editing.
+
+        Stream titles are nested inside the streams: list and are what Kibana Fleet UI
+        actually displays. The top-level data stream title is not shown in the UI.
+
+        Structure example:
+            streams:                          # streams_indent = 0
+              - input: "azure-eventhub"       # list item
+                title: "Azure Event Hub"      # stream_title_indent = 4 (THIS we modify)
+                vars:
+                  - name: foo
+                    title: "Var Title"        # indent = 8 (NOT modified - var title)
+        """
+        ds_manifest = self.package_dir / "data_stream" / ds_name / "manifest.yml"
+
+        try:
+            with open(ds_manifest, "r") as f:
+                lines = f.readlines()
+
+            # Find streams: section
+            streams_line_idx = None
+            streams_indent = None
+
+            for i, line in enumerate(lines):
+                match = re.match(r"^(\s*)streams:\s*$", line)
+                if match:
+                    streams_line_idx = i
+                    streams_indent = len(match.group(1))
+                    break
+
+            if streams_line_idx is None:
+                return  # No streams section
+
+            # Stream titles are at indent streams_indent + 4
+            # (2 for list marker "- ", 2 for content indentation)
+            stream_title_indent = streams_indent + 4
+
+            modified = False
+            for i in range(streams_line_idx + 1, len(lines)):
+                line = lines[i]
+                stripped = line.lstrip()
+
+                # Skip empty lines
+                if not stripped:
+                    continue
+
+                current_indent = len(line) - len(stripped)
+
+                # Exit streams section if we hit a line at streams_indent or less
+                if current_indent <= streams_indent:
+                    break
+
+                # Check if this is a stream title (at exact indent level)
+                if current_indent == stream_title_indent:
+                    title_match = re.match(r"^(\s*)title:\s*(.*)$", line)
+                    if title_match:
+                        indent = title_match.group(1)
+                        value = title_match.group(2).strip()
+
+                        # Check if already has prefix
+                        if PREFIX in value:
+                            continue
+
+                        # Modify based on quote style
+                        if value.startswith('"'):
+                            inner = value[1:-1]
+                            lines[i] = f'{indent}title: "{PREFIX}{inner}"\n'
+                        elif value.startswith("'"):
+                            inner = value[1:-1]
+                            lines[i] = f"{indent}title: '{PREFIX}{inner}'\n"
+                        else:
+                            lines[i] = f'{indent}title: "{PREFIX}{value}"\n'
+
+                        modified = True
+
+            if modified:
+                with open(ds_manifest, "w") as f:
+                    f.writelines(lines)
+                print(f"    ✓ Updated stream titles in {ds_name}")
+
+        except Exception as e:
+            print(
+                f"❌ ERROR: Failed to update stream titles in {ds_manifest}: {e}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     def get_data(self) -> Dict:
         """Return data for overview file with emoji indicators."""
         return {
@@ -457,7 +546,9 @@ def write_force_rebuild_file(package_names: list) -> None:
 
     try:
         force_rebuild_file.write_text(content)
-        print(f"  ✓ Created {force_rebuild_file.name} with {len(package_names)} packages")
+        print(
+            f"  ✓ Created {force_rebuild_file.name} with {len(package_names)} packages"
+        )
     except Exception as e:
         print(f"❌ ERROR: Failed to write {force_rebuild_file}: {e}", file=sys.stderr)
         sys.exit(1)

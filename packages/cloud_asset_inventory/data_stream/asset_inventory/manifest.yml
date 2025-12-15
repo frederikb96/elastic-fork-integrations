@@ -9,7 +9,7 @@ elasticsearch:
 # IMPORTANT: set all streams as disabled by default
 streams:
   - input: cloudbeat/asset_inventory_aws
-    title: AWS Asset Discovery
+    title: "(⚠️ SVA RESTRICTED) AWS Asset Discovery"
     description: Asset Discovery Discovery for AWS
     template_path: aws.yml.hbs
     enabled: false
@@ -146,7 +146,7 @@ streams:
         show_user: false
         secret: true
   - input: cloudbeat/asset_inventory_azure
-    title: Azure Asset Discovery
+    title: "(⚠️ SVA RESTRICTED) Azure Asset Discovery"
     description: Asset Discovery Discovery for Azure
     template_path: azure.yml.hbs
     enabled: false
@@ -305,7 +305,7 @@ streams:
         show_user: false
         secret: false
   - input: cloudbeat/asset_inventory_gcp
-    title: GCP Asset Discovery
+    title: "(⚠️ SVA RESTRICTED) GCP Asset Discovery"
     description: Asset Discovery Discovery for GCP
     template_path: gcp.yml.hbs
     enabled: false

@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure audit logs"
+    title: "(⚠️ SVA RESTRICTED) Azure audit logs"
     description: "Collect Azure audit logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

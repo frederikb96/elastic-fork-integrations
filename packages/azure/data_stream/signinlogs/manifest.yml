@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure sign-in logs"
+    title: "(⚠️ SVA RESTRICTED) Azure sign-in logs"
     description: "Collect Azure sign-in logs using azure-eventhub input"
     vars:
       - name: storage_account_container

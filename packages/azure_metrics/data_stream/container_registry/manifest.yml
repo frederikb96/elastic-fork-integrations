@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Container Registry
+    title: "(⚠️ SVA RESTRICTED) Container Registry"
     description: Collect Container Registry metrics
 elasticsearch:
   index_mode: "time_series"

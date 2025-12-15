@@ -5,7 +5,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure Identity Protection Logs"
+    title: "(⚠️ SVA RESTRICTED) Azure Identity Protection Logs"
     description: "Collect Microsoft Entra ID Identity Protection Logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

@@ -24,7 +24,7 @@ streams:
         multi: true
         required: false
         show_user: true
-    title: Database Account
+    title: "(⚠️ SVA RESTRICTED) Database Account"
     description: Collect Database Account metrics
 elasticsearch:
   index_mode: "time_series"

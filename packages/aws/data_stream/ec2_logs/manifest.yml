@@ -3,7 +3,7 @@ type: logs
 streams:
   - input: aws-s3
     template_path: aws-s3.yml.hbs
-    title: AWS EC2 Logs via S3
+    title: "(⚠️ SVA RESTRICTED) AWS EC2 Logs via S3"
     description: Collect AWS EC2 logs using s3 input
     enabled: false
     vars:
@@ -157,7 +157,7 @@ streams:
 
   - input: aws-cloudwatch
     template_path: aws-cloudwatch.yml.hbs
-    title: AWS EC2 Logs via CloudWatch
+    title: "(⚠️ SVA RESTRICTED) AWS EC2 Logs via CloudWatch"
     description: Collect AWS EC2 logs using cloudwatch input.
     vars:
       - name: log_group_arn

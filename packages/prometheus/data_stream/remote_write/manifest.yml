@@ -121,6 +121,6 @@ streams:
         type: yaml
         default: ""
 
-    title: Prometheus remote write metrics
+    title: "(⚠️ SVA RESTRICTED) Prometheus remote write metrics"
     enabled: false
     description: Collect Prometheus remote write metrics

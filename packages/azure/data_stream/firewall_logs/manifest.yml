@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: Azure Firewall Logs
+    title: "(⚠️ SVA RESTRICTED) Azure Firewall Logs"
     description: Collect Azure Firewall Network rule logs using azure-eventhub input
     vars:
       - name: preserve_original_event

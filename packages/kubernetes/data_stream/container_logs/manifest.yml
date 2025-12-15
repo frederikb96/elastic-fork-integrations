@@ -3,7 +3,7 @@ type: logs
 dataset: kubernetes.container_logs
 streams:
   - input: filestream
-    title: Collect Kubernetes container logs
+    title: "(⚠️ SVA RESTRICTED) Collect Kubernetes container logs"
     description: Collect Kubernetes container logs
     vars:
       - name: inputID

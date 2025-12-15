@@ -4,7 +4,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure platform logs"
+    title: "(⚠️ SVA RESTRICTED) Azure platform logs"
     description: "Collect Azure platform logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

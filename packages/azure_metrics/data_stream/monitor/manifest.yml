@@ -22,7 +22,7 @@ streams:
             metrics:
             - name: ["DataUsage", "DocumentCount", "DocumentQuota"]
               namespace: "Microsoft.DocumentDb/databaseAccounts"
-    title: Monitor
+    title: "(⚠️ SVA RESTRICTED) Monitor"
     description: Collect Monitor metrics
 elasticsearch:
   index_mode: "time_series"

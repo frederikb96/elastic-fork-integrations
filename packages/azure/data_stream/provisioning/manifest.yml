@@ -5,7 +5,7 @@ streams:
   - input: "azure-eventhub"
     enabled: false
     template_path: "azure-eventhub.yml.hbs"
-    title: "Azure Provisioning Logs"
+    title: "(⚠️ SVA RESTRICTED) Azure Provisioning Logs"
     description: "Collect Microsoft Entra ID Provisioning Logs using azure-eventhub input"
     vars:
       - name: preserve_original_event

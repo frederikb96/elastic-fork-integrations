@@ -4,7 +4,7 @@ dataset: syslog_router.log
 streams:
   - input: tcp
     template_path: tcp.yml.hbs
-    title: Syslog events (TCP)
+    title: "(⚠️ SVA RESTRICTED) Syslog events (TCP)"
     description: Collect Syslog events using the TCP input.
     vars:
       - name: listen_address
@@ -311,7 +311,7 @@ streams:
         description: Specify custom configuration options for the TCP input. See [TCP input](https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-input-tcp.html) for details.
   - input: udp
     template_path: udp.yml.hbs
-    title: Syslog events (UDP)
+    title: "(⚠️ SVA RESTRICTED) Syslog events (UDP)"
     description: Collect Syslog events using the UDP input.
     vars:
       - name: listen_host
@@ -608,7 +608,7 @@ streams:
         description: Specify custom configuration options for the UDP input. See [UDP input](https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-input-udp.html) for details.
   - input: filestream
     template_path: filestream.yml.hbs
-    title: Syslog events (Filestream)
+    title: "(⚠️ SVA RESTRICTED) Syslog events (Filestream)"
     description: Collect Syslog events using the Filestream input.
     enabled: false
     vars:
