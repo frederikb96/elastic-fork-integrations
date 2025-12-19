@@ -71,11 +71,11 @@ variables:
     echo "✓ elastic-package installed"
 
 # Matrix definitions - TARGET_ENV used by deploy script to select hardcoded config
-.matrix_staging: &matrix_staging
-  - TARGET_ENV: staging
+.matrix_i01: &matrix_i01
+  - TARGET_ENV: i01
 
-.matrix_production: &matrix_production
-  - TARGET_ENV: production
+.matrix_p01: &matrix_p01
+  - TARGET_ENV: p01
 
 # =============================================================================
 # MERGE STAGE: Scheduled upstream sync
@@ -113,7 +113,7 @@ merge:upstream:
 .deploy_template: &deploy_template
   stage: deploy
   image: debian:13.2
-  tags: ["docker"]
+  tags: ["support-soc-lnx-central-docker"]
   before_script:
     - apt-get update -qq && apt-get install -y curl wget git openssh-client rsync jq python3 python3-pip python3-venv > /dev/null
     - *sops_setup
@@ -126,12 +126,12 @@ merge:upstream:
       source .venv/bin/activate
       python ci/detect-and-deploy.py --env ${TARGET_ENV}
 
-deploy:staging:
+deploy:i01:
   <<: *deploy_template
   environment:
-    name: staging
+    name: i01
   parallel:
-    matrix: *matrix_staging
+    matrix: *matrix_i01
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
@@ -144,24 +144,25 @@ deploy:staging:
         - ci/force-rebuild.yml
         - .gitlab-ci.yml
 
-deploy:production:
-  <<: *deploy_template
-  environment:
-    name: production
-  parallel:
-    matrix: *matrix_production
-  needs:
-    - job: deploy:staging
-      parallel:
-        matrix: *matrix_staging
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - packages/**/*
-        - ci/detect-and-deploy.py
-        - ci/deploy_config.py
-        - ci/requirements-deploy.txt
-        - ci/force-rebuild.yml
-        - .gitlab-ci.yml
+# Production (p01) deployment - commented until production cluster is ready
+# deploy:p01:
+#   <<: *deploy_template
+#   environment:
+#     name: p01
+#   parallel:
+#     matrix: *matrix_p01
+#   needs:
+#     - job: deploy:i01
+#       parallel:
+#         matrix: *matrix_i01
+#   rules:
+#     - if: '$CI_PIPELINE_SOURCE == "schedule"'
+#       when: never
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+#       changes:
+#         - packages/**/*
+#         - ci/detect-and-deploy.py
+#         - ci/deploy_config.py
+#         - ci/requirements-deploy.txt
+#         - ci/force-rebuild.yml
+#         - .gitlab-ci.yml

@@ -12,13 +12,13 @@ class EPRConfig:
 
 
 ENVIRONMENTS = {
-    "staging": EPRConfig(
-        host="10.10.145.90",
+    "i01": EPRConfig(
+        host="10.80.1.201",
         user="socci",
         deploy_path="/opt/sva-soc-epr/packages",
     ),
-    "production": EPRConfig(
-        host="10.10.146.84",
+    "p01": EPRConfig(
+        host="10.80.1.233",
         user="socci",
         deploy_path="/opt/sva-soc-epr/packages",
     ),
