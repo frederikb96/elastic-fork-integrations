@@ -14,12 +14,12 @@ class EPRConfig:
 ENVIRONMENTS = {
     "i01": EPRConfig(
         host="10.80.1.201",
-        user="socci",
+        user="soc-ci",
         deploy_path="/opt/sva-soc-epr/packages",
     ),
     "p01": EPRConfig(
         host="10.80.1.233",
-        user="socci",
+        user="soc-ci",
         deploy_path="/opt/sva-soc-epr/packages",
     ),
 }
