@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List
 from dataclasses import dataclass
 
-from deploy_config import get_config, EPRConfig
+from deploy_config import get_config, EPRConfig, ENVIRONMENTS
 
 
 @dataclass
@@ -683,7 +683,7 @@ def main():
     parser.add_argument(
         "--env",
         required=True,
-        choices=["staging", "production"],
+        choices=list(ENVIRONMENTS.keys()),
         help="Target environment",
     )
     args = parser.parse_args()
