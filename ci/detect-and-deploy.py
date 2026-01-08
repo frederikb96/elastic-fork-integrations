@@ -362,8 +362,14 @@ echo "===ZIPS_END==="
 
         return changed
 
-    def step3_build_packages(self, changed: List[PackageInfo]) -> List[PackageInfo]:
-        """Build changed packages using elastic-package."""
+    def step3_build_packages(
+        self, changed: List[PackageInfo]
+    ) -> tuple[List[PackageInfo], List[str]]:
+        """Build changed packages using elastic-package.
+
+        Returns:
+            Tuple of (successfully built packages, failed package names)
+        """
         self.print_header("3", "6", "Building changed packages")
 
         built = []
@@ -400,12 +406,14 @@ echo "===ZIPS_END==="
 
         if failed:
             print()
-            print("❌ Failed packages:")
+            print("⚠️  Failed packages (will be skipped):")
             for pkg in failed:
                 print(f"  - {pkg}")
-            raise DeploymentError("Package builds failed")
+            if built:
+                print()
+                print(f"➡️  Continuing with {len(built)} successful packages...")
 
-        return built
+        return built, failed
 
     def step4_deploy(self):
         """Deploy built packages to EPR server via rsync."""
@@ -637,9 +645,18 @@ done
             changed = self.step2_check_deployment_status(packages, forced_packages)
 
             # Step 3: Build changed packages
-            built = self.step3_build_packages(changed)
+            built, failed = self.step3_build_packages(changed)
 
-            # Step 4: Deploy to server
+            # If all packages failed, abort
+            if not built:
+                if failed:
+                    raise DeploymentError(
+                        f"All {len(failed)} packages failed to build - nothing to deploy"
+                    )
+                # Edge case: nothing to build (shouldn't happen after step2)
+                return 0
+
+            # Step 4: Deploy to server (only successful builds)
             self.step4_deploy()
 
             # Step 5: Validate deployment
@@ -651,16 +668,30 @@ done
             # Cleanup force-rebuild file if deployment successful
             self.cleanup_force_rebuild_file()
 
-            # Success summary
+            # Final summary
             print()
             print("=" * 64)
-            print("DEPLOYMENT COMPLETE")
+            if failed:
+                print("DEPLOYMENT PARTIAL - SOME PACKAGES FAILED")
+            else:
+                print("DEPLOYMENT COMPLETE")
             print("=" * 64)
-            print(f"Built and deployed {len(built)} integration packages:")
+
+            print(f"Successfully deployed {len(built)} integration packages:")
             for pkg in built:
                 print(f"  ✓ {pkg}")
-            print()
 
+            if failed:
+                print()
+                print(f"❌ Failed to build {len(failed)} packages:")
+                for pkg in failed:
+                    print(f"  ✗ {pkg}")
+                print()
+                print("⚠️  Pipeline will exit with error code for CI visibility.")
+                print("   Fix the failed packages and re-run deployment.")
+                return 1
+
+            print()
             return 0
 
         except DeploymentError as e:
