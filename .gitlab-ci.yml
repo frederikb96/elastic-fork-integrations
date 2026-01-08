@@ -150,10 +150,11 @@ deploy:production:
     name: production
   parallel:
     matrix: *matrix_production
-  needs:
-    - job: deploy:int
-      parallel:
-        matrix: *matrix_int
+  # TODO: Enable production deploys after testing  
+  # needs:
+  #   - job: deploy:int
+  #     parallel:
+  #       matrix: *matrix_int
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
