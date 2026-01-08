@@ -71,10 +71,10 @@ variables:
     echo "✓ elastic-package installed"
 
 # Matrix definitions - TARGET_ENV used by deploy script to select hardcoded config
-.matrix_i01: &matrix_i01
+.matrix_int: &matrix_int
   - TARGET_ENV: i01
 
-.matrix_p01: &matrix_p01
+.matrix_production: &matrix_production
   - TARGET_ENV: p01
 
 # =============================================================================
@@ -126,12 +126,12 @@ merge:upstream:
       source .venv/bin/activate
       python ci/detect-and-deploy.py --env ${TARGET_ENV}
 
-deploy:i01:
+deploy:int:
   <<: *deploy_template
   environment:
-    name: i01
+    name: int
   parallel:
-    matrix: *matrix_i01
+    matrix: *matrix_int
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: never
@@ -144,25 +144,24 @@ deploy:i01:
         - ci/force-rebuild.yml
         - .gitlab-ci.yml
 
-# Production (p01) deployment - commented until production cluster is ready
-# deploy:p01:
-#   <<: *deploy_template
-#   environment:
-#     name: p01
-#   parallel:
-#     matrix: *matrix_p01
-#   needs:
-#     - job: deploy:i01
-#       parallel:
-#         matrix: *matrix_i01
-#   rules:
-#     - if: '$CI_PIPELINE_SOURCE == "schedule"'
-#       when: never
-#     - if: '$CI_COMMIT_BRANCH == "main"'
-#       changes:
-#         - packages/**/*
-#         - ci/detect-and-deploy.py
-#         - ci/deploy_config.py
-#         - ci/requirements-deploy.txt
-#         - ci/force-rebuild.yml
-#         - .gitlab-ci.yml
+deploy:production:
+  <<: *deploy_template
+  environment:
+    name: production
+  parallel:
+    matrix: *matrix_production
+  needs:
+    - job: deploy:int
+      parallel:
+        matrix: *matrix_int
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - packages/**/*
+        - ci/detect-and-deploy.py
+        - ci/deploy_config.py
+        - ci/requirements-deploy.txt
+        - ci/force-rebuild.yml
+        - .gitlab-ci.yml
