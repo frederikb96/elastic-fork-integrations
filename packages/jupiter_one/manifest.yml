@@ -1,6 +1,6 @@
 format_version: 3.3.2
 name: jupiter_one
-title: JupiterOne
+title: "(⚠️ SVA RESTRICTED) JupiterOne"
 version: 0.1.0
 description: Collect logs from JupiterOne with Elastic Agent.
 type: integration

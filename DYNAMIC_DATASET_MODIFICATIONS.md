@@ -601,4 +601,14 @@ integrations:
       threat:
         namespaced: ⚠️
         comment: ''
+  jupiter_one:
+    title: JupiterOne
+    comment: ''
+    data_streams:
+      asset:
+        namespaced: ⚠️
+        comment: ''
+      risks_and_alerts:
+        namespaced: ⚠️
+        comment: ''
 ```

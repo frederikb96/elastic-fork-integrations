@@ -1,9 +1,9 @@
-title: Collect Assets from JupiterOne.
+title: "(⚠️ SVA RESTRICTED) Collect Assets from JupiterOne."
 type: logs
 dataset: jupiter_one.asset
 streams:
   - input: cel
-    title: JupiterOne Assets
+    title: "(⚠️ SVA RESTRICTED) JupiterOne Assets"
     description: Collect JupiterOne Assets.
     template_path: cel.yml.hbs
     vars:
@@ -93,8 +93,6 @@ streams:
         description: >-
           Processors are used to reduce the number of fields in the exported event or to enhance the event with metadata. This executes in the agent before the logs are parsed.
 elasticsearch:
-  dynamic_dataset: true
-  dynamic_namespace: true
   index_template:
     mappings:
       dynamic: true
