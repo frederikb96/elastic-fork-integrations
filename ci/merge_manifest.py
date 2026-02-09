@@ -23,6 +23,7 @@ Arguments from git:
   %L (sys.argv[4]) - Conflict marker size
 """
 
+import re
 import subprocess
 import sys
 import yaml
@@ -203,12 +204,6 @@ def merge_manifest(
     print(f"   {reason}")
     print("")
 
-    # Start with upstream version (other) - gets all their changes
-    result = other.copy()
-
-    # Preserve local title modification
-    result["title"] = current["title"]
-
     print("Merged values:")
     print(f"  title (local):    {current['title']}")
     if "version" in other:
@@ -217,14 +212,42 @@ def merge_manifest(
         print("  version: (no version field - data stream manifest)")
     print("")
 
-    # Write merged result to current file
+    # Text-based merge: use upstream file as base, replace only the title line.
+    # This preserves ALL upstream formatting (indentation, quotes, comments).
     try:
+        with open(other_file, "r") as f:
+            upstream_lines = f.readlines()
+
+        with open(current_file, "r") as f:
+            current_lines = f.readlines()
+
+        our_title_line = None
+        for line in current_lines:
+            if re.match(r"^title:", line):
+                our_title_line = line
+                break
+
+        if our_title_line is None:
+            print("❌ ERROR: Could not find title line in current file", file=sys.stderr)
+            return 1
+
+        replaced = False
+        for i, line in enumerate(upstream_lines):
+            if re.match(r"^title:", line):
+                upstream_lines[i] = our_title_line
+                replaced = True
+                break
+
+        if not replaced:
+            print("❌ ERROR: Could not find title line in upstream file", file=sys.stderr)
+            return 1
+
         with open(current_file, "w") as f:
-            yaml.dump(
-                result, f, default_flow_style=False, allow_unicode=True, sort_keys=False
-            )
-        print("✅ Merge successful - wrote combined manifest")
+            f.writelines(upstream_lines)
+
+        print("✅ Merge successful - wrote combined manifest (text-based)")
         return 0
+
     except Exception as e:
         print(f"❌ ERROR: Failed to write merged file: {e}", file=sys.stderr)
         return 1
