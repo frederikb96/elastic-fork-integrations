@@ -248,7 +248,7 @@ integrations:
         namespaced: ⚠️
         comment: ''
   azure_ai_foundry:
-    title: Azure AI Foundry
+    title: Microsoft Foundry
     comment: ''
     data_streams:
       logs:
