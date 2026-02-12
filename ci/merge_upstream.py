@@ -90,7 +90,11 @@ def configure_git() -> None:
 
     # Setup authentication (GITLAB_TOKEN required for write access to protected main)
     git_url = f"https://ci:{GITLAB_TOKEN}@{CI_SERVER_HOST}/{CI_PROJECT_PATH}.git"
-    run_command(["git", "remote", "set-url", "origin", git_url])
+    print(f"→ Running: git remote set-url origin https://ci:****@{CI_SERVER_HOST}/{CI_PROJECT_PATH}.git")
+    subprocess.run(
+        ["git", "remote", "set-url", "origin", git_url],
+        check=True, text=True, cwd=REPO_ROOT,
+    )
 
     print("✓ Git configured")
 
@@ -438,8 +442,9 @@ def commit_merge_first() -> None:
     """
     print("\nCommitting merge first (preserving merge history)...")
 
-    # Stage all changes from the merge
-    run_command(["git", "add", "-A"])
+    # All merge changes are already staged by git merge --no-commit.
+    # README.md was re-staged by git checkout HEAD -- README.md.
+    # No git add needed — commit directly from the index.
 
     # Commit with merge message - this creates a proper merge commit with 2 parents
     result = run_command(

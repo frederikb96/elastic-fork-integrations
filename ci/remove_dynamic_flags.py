@@ -101,6 +101,20 @@ class IntegrationProcessor:
                 self._update_datastream_title(ds_name)
                 self._update_stream_titles(ds_name)
 
+        self._validate_removal()
+
+    @staticmethod
+    def _prefix_title_line(indent: str, value: str) -> str:
+        """Create a prefixed title line preserving the original quote style."""
+        if value.startswith('"'):
+            inner = value[1:-1]
+            return f'{indent}title: "{PREFIX}{inner}"\n'
+        elif value.startswith("'"):
+            inner = value[1:-1]
+            return f"{indent}title: '{PREFIX}{inner}'\n"
+        else:
+            return f'{indent}title: "{PREFIX}{value}"\n'
+
     def _update_package_title(self) -> None:
         """Add prefix to package manifest title using text-based editing."""
         pkg_manifest = self.package_dir / "manifest.yml"
@@ -141,17 +155,7 @@ class IntegrationProcessor:
                     indent = match.group(1)
                     value = match.group(2).strip()
 
-                    # Determine quote style and modify
-                    if value.startswith('"'):
-                        inner = value[1:-1]
-                        lines[i] = f'{indent}title: "{PREFIX}{inner}"\n'
-                    elif value.startswith("'"):
-                        inner = value[1:-1]
-                        lines[i] = f"{indent}title: '{PREFIX}{inner}'\n"
-                    else:
-                        # Need quotes if prefix contains special chars
-                        lines[i] = f'{indent}title: "{PREFIX}{value}"\n'
-
+                    lines[i] = self._prefix_title_line(indent, value)
                     modified = True
                     break
 
@@ -289,15 +293,7 @@ class IntegrationProcessor:
                         print(f"    ✓ {ds_name} title already marked")
                         return
 
-                    # Modify based on quote style
-                    if value.startswith('"'):
-                        inner = value[1:-1]
-                        lines[i] = f'{indent}title: "{PREFIX}{inner}"\n'
-                    elif value.startswith("'"):
-                        inner = value[1:-1]
-                        lines[i] = f"{indent}title: '{PREFIX}{inner}'\n"
-                    else:
-                        lines[i] = f'{indent}title: "{PREFIX}{value}"\n'
+                    lines[i] = self._prefix_title_line(indent, value)
 
                     with open(ds_manifest, "w") as f:
                         f.writelines(lines)
@@ -380,16 +376,7 @@ class IntegrationProcessor:
                         if PREFIX in value:
                             continue
 
-                        # Modify based on quote style
-                        if value.startswith('"'):
-                            inner = value[1:-1]
-                            lines[i] = f'{indent}title: "{PREFIX}{inner}"\n'
-                        elif value.startswith("'"):
-                            inner = value[1:-1]
-                            lines[i] = f"{indent}title: '{PREFIX}{inner}'\n"
-                        else:
-                            lines[i] = f'{indent}title: "{PREFIX}{value}"\n'
-
+                        lines[i] = self._prefix_title_line(indent, value)
                         modified = True
 
             if modified:
@@ -403,6 +390,39 @@ class IntegrationProcessor:
                 file=sys.stderr,
             )
             sys.exit(1)
+
+    def _validate_removal(self) -> None:
+        """Verify dynamic flags were actually removed from all affected data streams."""
+        for ds_name, is_affected in self.affected_data_streams.items():
+            if not is_affected:
+                continue
+
+            ds_manifest = self.package_dir / "data_stream" / ds_name / "manifest.yml"
+            try:
+                with open(ds_manifest, "r") as f:
+                    data = self.yaml.load(f)
+
+                if data and "elasticsearch" in data:
+                    es_section = data["elasticsearch"]
+                    if isinstance(es_section, dict) and (
+                        es_section.get("dynamic_dataset") is True
+                        or es_section.get("dynamic_namespace") is True
+                    ):
+                        print(
+                            f"❌ ERROR: Flags still present in {ds_manifest} after removal",
+                            file=sys.stderr,
+                        )
+                        print(
+                            "   This may indicate an unsupported YAML format (e.g., inline style).",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+            except Exception as e:
+                print(
+                    f"❌ ERROR: Failed to validate {ds_manifest}: {e}",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
     def get_data(self) -> Dict:
         """Return data for overview file with emoji indicators."""
