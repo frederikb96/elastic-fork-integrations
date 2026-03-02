@@ -97,6 +97,15 @@ See [elastic-clusters README - GitLab Token Auto-Rotation](https://codehub.sva.d
 
 Server config is in `ci/deploy_config.py`.
 
+### Pipeline Notifications
+
+This repo uses the shared SOC notification infrastructure — see [elastic-clusters README - Pipeline Notification Setup](https://codehub.sva.de/sva-soc/soc-infrastructure/elastic/soc-cloud/elastic-clusters#pipeline-notification-setup) for full architecture and `SMTP_CONFIG` variable setup.
+
+**Local specifics:**
+- `merge:upstream` and `deploy:*` jobs send failure emails via `ci/notify.py`
+- Severity: LOW — integration failures don't affect running clusters
+- `ci/notify.py` is identical to the clusters repo version; sync changes across all three repos
+
 ### Pipeline Schedules
 
 **Daily upstream merge:** `0 9 * * *` on main

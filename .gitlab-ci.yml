@@ -97,6 +97,16 @@ merge:upstream:
     - git config merge.manifest.name "Manifest field-level merge (title+version)"
   script:
     - source .venv/bin/activate && python3 ci/merge_upstream.py
+  # TODO: Uncomment after_script once SMTP port 587 is open outbound on CI runner
+  # after_script:
+  #   - |
+  #     if [ "$CI_JOB_STATUS" = "failed" ]; then
+  #       apk add --no-cache python3
+  #       python3 ci/notify.py \
+  #         --subject "SOCECM - Integration Merge Upstream Failed" \
+  #         --severity low \
+  #         --body "The scheduled upstream merge job failed. This is NOT critical for cluster operation - existing data collection continues. Pipeline: ${CI_PIPELINE_URL}"
+  #     fi
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == "main"'
 
@@ -119,6 +129,15 @@ merge:upstream:
       echo "Deploying packages to ${TARGET_ENV} EPR..."
       source .venv/bin/activate
       python ci/detect-and-deploy.py --env ${TARGET_ENV}
+  # TODO: Uncomment after_script once SMTP port 587 is open outbound on CI runner
+  # after_script:
+  #   - |
+  #     if [ "$CI_JOB_STATUS" = "failed" ]; then
+  #       python3 ci/notify.py \
+  #         --subject "SOCECM - EPR Deployment Failed" \
+  #         --severity low \
+  #         --body "EPR deployment job failed. This affects ability to install/update integrations but running clusters are unaffected. Pipeline: ${CI_PIPELINE_URL}"
+  #     fi
 
 deploy:int:
   <<: *deploy_template
