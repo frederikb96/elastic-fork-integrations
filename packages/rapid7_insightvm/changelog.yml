@@ -1,4 +1,9 @@
 # newer versions go on top
+- version: "2.9.1"
+  changes:
+    - description: Always request the full current vulnerability set in the asset_vulnerability data stream so steady-state findings keep flowing and refreshing, instead of only new/remediated changes after the first run.
+      type: bugfix
+      link: https://github.com/elastic/integrations/pull/99999
 - version: "2.9.0"
   changes:
     - description: Use new `release` field for agentless deployment mode to establish as beta.
